@@ -1,0 +1,13 @@
+{
+  "canisters": {
+    "event_system": {
+      "main": "src/main.mo",
+      "type": "motoko"
+    }
+  },
+  "defaults": {
+    "build": {
+      "packtool": "vessel sources"
+    }
+  }
+}
