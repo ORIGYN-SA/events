@@ -1,8 +1,8 @@
 import MigrationTypes "../types";
 
 module {
-  public func upgrade(prevMigrationState: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
-    let #state000(#data(prevState)) = prevMigrationState;
+  public func upgrade(migrationState: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
+    let #state000(#data(state)) = migrationState;
 
     return #state001(#data({
       var admins = [];

@@ -6,7 +6,7 @@ module {
   let StateTypes = MigrationTypes.Current;
 
   public type SubscriberActor = actor {
-    handleEvent: (canisterId: Principal, name: Text, payload: Candy.CandyValue) -> async ();
+    handleEvent: (id: Nat, canisterId: Principal, name: Text, payload: Candy.CandyValue) -> ();
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -14,15 +14,14 @@ module {
   public type SharedSubscriber = {
     canisterId: Principal;
     createdAt: Time.Time;
-    firstFailedEventTime: Time.Time;
     stale: Bool;
-    eventNames: [Text];
+    subscriptions: [Text];
   };
 
   public type FetchSubscribersFilters = {
     canisterId: ?[Principal];
     stale: ?[Bool];
-    eventNames: ?[Text];
+    subscriptions: ?[Text];
   };
 
   public type FetchSubscribersParams = {
@@ -42,10 +41,9 @@ module {
     id: Nat;
     name: Text;
     payload: Candy.CandyValue;
-    canisterId: Principal;
+    emitter: Principal;
     createdAt: Time.Time;
     nextProcessingTime: Time.Time;
-    numberOfDispatches: Nat;
     numberOfAttempts: Nat;
     stale: Bool;
     subscribers: [Principal];
@@ -54,7 +52,7 @@ module {
   public type FetchEventsFilters = {
     id: ?[Nat];
     name: ?[Text];
-    canisterId: ?[Principal];
+    emitter: ?[Principal];
     stale: ?[Bool];
     numberOfAttempts: ?[Nat];
   };
