@@ -1,12 +1,13 @@
-import Candy "mo:candy/types";
-import Time "mo:base/Time";
+import Candy "mo:candy_0_1_9/types";
+import Map "mo:hashmap_4_0_0/Map";
+import Set "mo:hashmap_4_0_0/Set";
 
 module {
   public type Subscriber = {
     canisterId: Principal;
-    createdAt: Time.Time;
+    createdAt: Int;
     var stale: Bool;
-    var subscriptions: [Text];
+    var subscriptions: Set.Set<Text>;
   };
 
   public type Event = {
@@ -14,19 +15,19 @@ module {
     name: Text;
     payload: Candy.CandyValue;
     emitter: Principal;
-    createdAt: Time.Time;
-    var nextProcessingTime: Time.Time;
+    createdAt: Int;
+    var nextProcessingTime: Int;
     var numberOfAttempts: Nat;
     var stale: Bool;
-    var subscribers: [Subscriber];
+    var subscribers: Set.Set<Principal>;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public type State = {
-    var admins: [Principal];
+    var admins: Set.Set<Principal>;
     var eventId: Nat;
-    var subscribers: [Subscriber];
-    var events: [Event];
+    var subscribers: Map.Map<Principal, Subscriber>;
+    var events: Map.Map<Nat, Event>;
   };
 };

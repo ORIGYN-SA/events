@@ -1,20 +1,22 @@
+import Map "mo:hashmap_4_0_0/Map";
+import Set "mo:hashmap_4_0_0/Set";
 import MigrationTypes "../types";
 
 module {
   public func upgrade(migrationState: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
-    let #state000(#data(state)) = migrationState;
+    let #v0_0_0(#data(state)) = migrationState;
 
-    return #state001(#data({
-      var admins = [];
+    return #v0_1_0(#data({
+      var admins = Set.new();
       var eventId = 1;
-      var subscribers = [];
-      var events = [];
+      var subscribers = Map.new();
+      var events = Map.new();
     }));
   };
 
   public func downgrade(migrationState: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
-    let #state001(#data(state)) = migrationState;
+    let #v0_1_0(#data(state)) = migrationState;
 
-    return #state000(#data);
+    return #v0_0_0(#data);
   };
 };

@@ -1,23 +1,19 @@
-import Migration001 "./001-initial";
-import Migration002 "./002-one-time-calls";
+import V0_1_0 "./00-01-00-initial";
 import MigrationTypes "./types";
 
 module {
   let upgrades = [
-    Migration001.upgrade,
-    Migration002.upgrade,
+    V0_1_0.upgrade,
   ];
 
   let downgrades = [
-    Migration001.downgrade,
-    Migration002.downgrade,
+    V0_1_0.downgrade,
   ];
 
   func getMigrationId(state: MigrationTypes.State): Nat {
     return switch (state) {
-      case (#state000(_)) 0;
-      case (#state001(_)) 1;
-      case (#state002(_)) 2;
+      case (#v0_0_0(_)) 0;
+      case (#v0_1_0(_)) 1;
     };
   };
 
