@@ -1,0 +1,48 @@
+name: Events canister - deploy dev
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Type of deploy action"
+        required: true
+        type: choice
+        options:
+          - upgrade
+          - install
+          - reinstall
+
+jobs:
+  deploy_dev:
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [16.x]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: aviate-labs/setup-dfx@v0.2.3
+        with:
+          dfx-version: 0.9.3
+          vessel-version: 0.6.3
+
+      - name: deploy to dfinity mainnet
+        run: |
+          echo ${CANISTERS_STATE} > state.json
+          ./scripts/lib/build_dev.sh
+          ./scripts/lib/deploy_dev.sh
+        env:
+          ACTION: ${{ inputs.action || 'upgrade' }}
+          CANISTERS_STATE: ${{ secrets.CANISTERS_STATE_DEV }}
+          WALLET_ID: wlmab-ziaaa-aaaaj-qabyq-cai
+          ICP_URL: https://mainnet.dfinity.network
+          DFX_IDENTITY: ${{ secrets.DFX_IDENTITY_DEV }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID_DEV }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET_DEV }}
+          AZURE_KEY_ID: ${{ secrets.AZURE_KEY_ID_DEV }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID_DEV }}
+          AZURE_VAULT_ID: ${{ secrets.AZURE_VAULT_ID_DEV }}

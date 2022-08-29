@@ -1,0 +1,23 @@
+type LargeDeployer = 
+ service {
+   appendWasm: (vec nat8) -> (nat);
+   call_raw: (principal, text, blob) -> (blob);
+   deleteWasm: (principal) -> () oneway;
+   deployWasm: (variant {
+                  install;
+                  reinstall;
+                  upgrade;
+                }, Canister_settings, principal, vec nat8) -> (principal);
+   getWasmHash: () -> (blob);
+   reset: () -> ();
+   updateDeployer: (principal) -> () oneway;
+   wallet_receive: () -> (record {accepted: nat64;});
+ };
+type Canister_settings = 
+ record {
+   compute_allocation: opt nat;
+   controllers: opt vec principal;
+   freezing_threshold: opt nat;
+   memory_allocation: opt nat;
+ };
+service : () -> LargeDeployer
