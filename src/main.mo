@@ -1,69 +1,78 @@
 import Array "mo:base/Array";
-import Iter "mo:base/Iter";
 import Candy "mo:candy/types";
-import Map "mo:hashmap/Map";
-import Set "mo:hashmap/Set";
-import Error "mo:base/Error";
+import Debug "mo:base/Debug";
+import Map "mo:map/Map";
 import MigrationTypes "./migrations/types";
 import Migrations "./migrations";
 import Option "mo:base/Option";
+import Prim "mo:prim";
 import Principal "mo:base/Principal";
-import Time "mo:base/Time";
+import Set "mo:map/Set";
 import Types "./types";
-import Utils "./utils";
+import Utils "./utils/misc";
 
-shared deployer actor class EventSystem() = this {
-  let StateTypes = MigrationTypes.Current;
+shared ({ caller = deployer }) actor class EventSystem() {
+  let State = MigrationTypes.Current;
+
+  let { get = coalesce } = Option;
+
+  let { pthash; arraySlice } = Utils;
 
   let { nhash; thash; phash; lhash; calcHash } = Map;
 
+  let { nat64ToNat = nat; natToNat64 = nat64; time } = Prim;
+
+  let RESEND_DELAY: Nat64 = 15 * 60 * 1_000_000_000;
+
+  let BROADCAST_DELAY: Nat64 = 3 * 60 * 1_000_000_000;
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   stable var migrationState: MigrationTypes.State = #v0_0_0(#data);
 
-  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { deployer = deployer.caller });
+  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), {});
 
-  let #v0_1_0(#data(state)) = migrationState;
+  let state = switch (migrationState) { case (#v0_1_0(#data(state))) state; case (_) Debug.trap("Unexpected migration state") };
+
+  let { admins = stateAdmins; subscribers = stateSubscribers; subscriptions = stateSubscriptions; events = stateEvents } = state;
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   func isAdmin(principalId: Principal): Bool {
-    return principalId == deployer.caller or principalId == Principal.fromActor(this) or Set.has(state.admins, phash, principalId);
+    return principalId == deployer or Set.has(stateAdmins, phash, principalId);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  func removeSubscriberCascade(canisterId: Principal) {
-    ignore do ? {
-      let hash = calcHash(phash, canisterId);
-      let subscriber = Map.remove(state.subscribers, hash, canisterId)!;
+  func removeEventCascade(eventId: Nat) {
+    ignore do ?{
+      let event = Map.remove(stateEvents, nhash, eventId)!;
+      let eventName = event.eventName;
 
-      for (event in Map.vals(state.events)) {
-        Set.delete(event.subscribers, hash, canisterId);
+      for (subscriberId in Set.keys(event.subscribers)) ignore do ?{
+        let subscription = Map.get(stateSubscriptions, pthash, (subscriberId, eventName))!;
 
-        if (Set.size(event.subscribers) == 0) Map.delete(state.events, nhash, event.id);
+        Set.delete(subscription.events, nhash, eventId);
       };
     };
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  func processEvent(event: StateTypes.Event): async () {
-    if (event.numberOfAttempts == 8 and Time.now() >= event.nextProcessingTime) {
-      event.stale := true;
+  func removeSubscriberCascade(subscriberId: Principal) {
+    ignore do ?{
+      let subscriberIdHash = calcHash(phash, subscriberId);
+      let subscriber = Map.remove(stateSubscribers, subscriberIdHash, subscriberId)!;
 
-      for (subscriberId in Set.keys(event.subscribers)) ignore do ? { Map.get(state.subscribers, phash, subscriberId)!.stale := true };
-    };
+      for (eventName in Set.keys(subscriber.subscriptions)) ignore do ?{
+        let subscription = Map.remove(stateSubscriptions, pthash, (subscriberId, eventName))!;
 
-    if (not event.stale and Time.now() >= event.nextProcessingTime) {
-      event.numberOfAttempts += 1;
-      event.nextProcessingTime := Time.now() + 15 * 60 * 1000000000 * 2 ** (event.numberOfAttempts - 1);
+        for (eventId in Set.keys(subscription.events)) ignore do ?{
+          let event = Map.get(stateEvents, nhash, eventId)!;
 
-      for (subscriberId in Set.keys(event.subscribers)) ignore do ? {
-        let subscriber = Map.get(state.subscribers, phash, subscriberId)!;
+          Set.delete(event.subscribers, subscriberIdHash, subscriberId);
 
-        if (not subscriber.stale) {
-          let subscriberActor: Types.SubscriberActor = actor(Principal.toText(subscriber.canisterId));
-
-          subscriberActor.handleEvent(event.id, event.emitter, event.name, event.payload);
+          if (Set.size(event.subscribers) == 0) removeEventCascade(eventId);
         };
       };
     };
@@ -71,126 +80,197 @@ shared deployer actor class EventSystem() = this {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared context func addSubscription(canisterId: Principal, eventName: Text): async () {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
-    if (eventName.size() > 100) throw Error.reject("Event name length limit reached");
+  func processEvent(event: State.Event): async () {
+    if (event.numberOfAttempts < 8) {
+      let { eventId; eventName; payload; publisherId } = event;
 
-    let subscriber = Option.get(Map.get(state.subscribers, phash, canisterId), {
-      canisterId = canisterId;
-      createdAt = Time.now();
-      var stale = false;
-      var subscriptions = Set.new<Text>();
-    });
+      event.numberOfAttempts += 1;
+      event.nextResendTime := time() + RESEND_DELAY * 2 ** (event.numberOfAttempts - 1);
 
-    Map.set(state.subscribers, phash, canisterId, subscriber);
+      for (subscriberId in Set.keys(event.subscribers)) ignore do ?{
+        let subscription = Map.get(stateSubscriptions, pthash, (subscriberId, eventName))!;
 
-    subscriber.stale := false;
+        if (subscription.active and not subscription.stopped) {
+          let subscriberActor: Types.SubscriberActor = actor(Principal.toText(subscriberId));
 
-    if (not Set.put(subscriber.subscriptions, thash, eventName)) {
-      if (Set.size(subscriber.subscriptions) >= 100) throw Error.reject("Event subscriptions limit reached");
+          subscriberActor.handleEvent(eventId, publisherId, eventName, payload);
+        };
+      };
+    } else {
+      removeEventCascade(event.eventId);
     };
-  };
-
-  public shared context func subscribe(eventName: Text): async () {
-    await addSubscription(context.caller, eventName);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared context func removeSubscription(canisterId: Principal, eventName: Text): async () {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
-    if (eventName.size() > 100) throw Error.reject("Event name length limit reached");
+  public shared ({ caller }) func subscribe(eventName: Text, options: Types.SubscriptionOptions): async () {
+    if (eventName.size() > 50) Debug.trap("Event eventName length limit reached");
+    if (options.size() > 2) Debug.trap("InvaleventId number of options");
 
-    ignore do ? {
-      let subscriber = Map.get(state.subscribers, phash, canisterId)!;
+    let subId = (caller, eventName);
 
-      Set.delete(subscriber.subscriptions, thash, eventName);
+    let subscriber = Map.update<Principal, State.Subscriber>(stateSubscribers, phash, caller, func(key, value) = coalesce(value, {
+      subscriberId = caller;
+      createdAt = time();
+      var activeSubscriptions = 0:Nat32;
+      subscriptions = Set.new(thash);
+    }));
 
-      if (Set.size(subscriber.subscriptions) == 0) removeSubscriberCascade(canisterId);
+    let subscription = Map.update<State.SubId, State.Subscription>(stateSubscriptions, pthash, subId, func(key, value) = coalesce(value, {
+      eventName = eventName;
+      subscriberId = caller;
+      createdAt = time();
+      var skip = 0:Nat32;
+      var skipped = 0:Nat32;
+      var active = false;
+      var stopped = false;
+      events = Set.new(nhash);
+    }));
+
+    if (not subscription.active) {
+      subscription.active := true;
+      subscriber.activeSubscriptions +%= 1;
     };
-  };
 
-  public shared context func unsubscribe(eventName: Text): async () {
-    await removeSubscription(context.caller, eventName);
+    for (option in options.vals()) switch (option) {
+      case (#stopped(stopped)) subscription.stopped := stopped;
+      case (#skip(skip)) subscription.skip := skip;
+    };
+
+    Set.add(subscriber.subscriptions, thash, eventName);
+
+    if (subscriber.activeSubscriptions > 100) Debug.trap("Active subscriptions limit reached");
+    if (Set.size(subscriber.subscriptions) > 500) Debug.trap("Subscriptions limit reached");
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared context func addEvent(emitter: Principal, eventName: Text, payload: Candy.CandyValue): async () {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
-    if (eventName.size() > 100) throw Error.reject("Event name length limit reached");
+  public shared ({ caller }) func unsubscribe(eventName: Text, options: Types.UnsubscribeOptions): async () {
+    if (eventName.size() > 50) Debug.trap("Event eventName length limit reached");
+    if (options.size() > 1) Debug.trap("InvaleventId number of options");
 
-    let subscribers = Set.new<Principal>();
-    let hash = calcHash(thash, eventName);
+    ignore do ?{
+      let subscriber = Map.get(stateSubscribers, phash, caller)!;
+      let subscription = Map.get(stateSubscriptions, pthash, (caller, eventName))!;
 
-    for (subscriber in Map.vals(state.subscribers)) {
-      if (Set.has(subscriber.subscriptions, hash, eventName)) Set.add(subscribers, phash, subscriber.canisterId);
+      if (subscription.active) {
+        subscription.active := false;
+        subscriber.activeSubscriptions -%= 1;
+      };
+
+      for (option in options.vals()) switch (option) {
+        case (#purge) {
+          Set.delete(subscriber.subscriptions, thash, eventName);
+          Map.delete(stateSubscriptions, pthash, (caller, eventName));
+        };
+      };
+    };
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public shared ({ caller }) func publish(eventName: Text, payload: Candy.CandyValue): async () {
+    if (eventName.size() > 50) Debug.trap("Event eventName length limit reached");
+
+    let eventId = state.eventId;
+    let subscribers = Set.new(phash);
+
+    for (subscriberId in Map.keys(stateSubscribers)) ignore do ?{
+      let subscription = Map.get(stateSubscriptions, pthash, (subscriberId, eventName))!;
+
+      if (subscription.active) if (subscription.skipped >= subscription.skip) {
+        subscription.skipped := 0;
+
+        Set.add(subscribers, phash, subscriberId);
+        Set.add(subscription.events, nhash, eventId);
+      } else {
+        subscription.skipped += 1;
+      };
     };
 
     if (Set.size(subscribers) > 0) {
-      let event = {
-        id = state.eventId;
-        name = eventName;
+      let event: State.Event = {
+        eventId = eventId;
+        eventName = eventName;
         payload = payload;
-        emitter = emitter;
-        createdAt = Time.now();
-        var nextProcessingTime = Time.now();
-        var numberOfDispatches = 0;
+        publisherId = caller;
+        createdAt = time();
+        var nextResendTime = time();
         var numberOfAttempts = 0;
-        var stale = false;
-        var subscribers = subscribers;
+        subscribers = subscribers;
       };
 
-      state.eventId += 1;
+      Map.set(stateEvents, nhash, eventId, event);
 
-      Map.set(state.events, nhash, event.id, event);
+      state.eventId += 1;
 
       ignore processEvent(event);
     };
   };
 
-  public shared context func emit(eventName: Text, payload: Candy.CandyValue): async () {
-    await addEvent(context.caller, eventName, payload);
-  };
-
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared context func confirmEventProcessed(id: Nat): async () {
-    ignore do ? {
-      let event = Map.get(state.events, nhash, id)!;
+  public shared ({ caller }) func requestMissedEvents(eventName: Text, options: Types.MissedEventOptions): async () {
+    if (eventName.size() > 50) Debug.trap("Event eventName length limit reached");
+    if (options.size() > 2) Debug.trap("InvaleventId number of options");
 
-      Set.delete(event.subscribers, phash, context.caller);
+    ignore do ?{
+      let subscription = Map.get(stateSubscriptions, pthash, (caller, eventName))!;
+      let subscriberActor = actor(Principal.toText(caller)):Types.SubscriberActor;
+      var from = 0:Nat64;
+      var to = 0:Nat64 -% 1;
 
-      if (Set.size(event.subscribers) == 0) Map.delete(state.events, nhash, id);
+      for (option in options.vals()) switch (option) {
+        case (#from(value)) from := value;
+        case (#to(value)) to := value;
+      };
+
+      for (eventId in Set.keys(subscription.events)) ignore do ?{
+        let event = Map.get(stateEvents, nhash, eventId)!;
+
+        if (event.createdAt >= from and event.createdAt <= to) {
+          subscriberActor.handleEvent(event.eventId, event.publisherId, event.eventName, event.payload);
+        };
+      };
     };
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query context func fetchSubscribers(params: Types.FetchSubscribersParams): async Types.FetchSubscribersResponse {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
+  public shared ({ caller }) func confirmEventProcessed(eventId: Nat): async () {
+    ignore do ?{
+      let event = Map.get(stateEvents, nhash, eventId)!;
 
-    let canisterId = do ? { Set.fromIter(params.filters!.canisterId!.vals(), phash) };
-    let stale = do ? { Set.fromIter(params.filters!.stale!.vals(), lhash) };
-    let subscriptions = do ? { Set.fromIter(params.filters!.subscriptions!.vals(), thash) };
+      Set.delete(event.subscribers, phash, caller);
 
-    let subscribers = Iter.toArray(Map.vals(state.subscribers));
+      if (Set.size(event.subscribers) == 0) removeEventCascade(eventId);
+    };
+  };
 
-    let filteredSubscribers = Array.filter(subscribers, func(subscriber: StateTypes.Subscriber): Bool {
-      ignore do ? { if (not Set.has(canisterId!, phash, subscriber.canisterId)) return false };
-      ignore do ? { if (not Set.has(stale!, lhash, subscriber.stale)) return false };
-      ignore do ? { if (not Set.some<Text>(subscriptions!, func(item) { Set.has(subscriber.subscriptions, thash, item) })) return false };
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public query ({ caller }) func fetchSubscribers(params: Types.FetchSubscribersParams): async Types.FetchSubscribersResponse {
+    if (not isAdmin(caller)) Debug.trap("Not authorized");
+
+    let subscriberId = do ?{ Set.fromIter(params.filters!.subscriberId!.vals(), phash) };
+    let subscriptions = do ?{ Set.fromIter(params.filters!.subscriptions!.vals(), thash) };
+
+    let subscribers = Map.toArray<Principal, State.Subscriber, State.Subscriber>(stateSubscribers, func(key, value) = ?value);
+
+    let filteredSubscribers = Array.filter(subscribers, func(subscriber: State.Subscriber): Bool {
+      ignore do ?{ if (not Set.has(subscriberId!, phash, subscriber.subscriberId)) return false };
+      ignore do ?{ if (not Set.some<Text>(subscriptions!, func(item) = Set.has(subscriber.subscriptions, thash, item))) return false };
 
       return true;
     });
 
-    let limitedSubscribers = Utils.arraySlice(filteredSubscribers, params.offset, ?(Option.get(params.offset, 0) + params.limit));
+    let limitedSubscribers = arraySlice(filteredSubscribers, params.offset, ?(coalesce(params.offset, 0) + params.limit));
 
-    let sharedSubscribers = Array.map(limitedSubscribers, func(subscriber: StateTypes.Subscriber): Types.SharedSubscriber {{
-      canisterId = subscriber.canisterId;
+    let sharedSubscribers = Array.map(limitedSubscribers, func(subscriber: State.Subscriber): Types.SharedSubscriber {{
+      subscriberId = subscriber.subscriberId;
       createdAt = subscriber.createdAt;
-      stale = subscriber.stale;
-      subscriptions = Iter.toArray(Set.keys(subscriber.subscriptions));
+      activeSubscriptions = subscriber.activeSubscriptions;
+      subscriptions = Set.toArray<Text, Text>(subscriber.subscriptions, func(key) = ?key);
     }});
 
     return { items = sharedSubscribers; totalCount = filteredSubscribers.size() };
@@ -198,39 +278,36 @@ shared deployer actor class EventSystem() = this {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query context func fetchEvents(params: Types.FetchEventsParams): async Types.FetchEventsResponse {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
+  public query ({ caller }) func fetchEvents(params: Types.FetchEventsParams): async Types.FetchEventsResponse {
+    if (not isAdmin(caller)) Debug.trap("Not authorized");
 
-    let id = do ? { Set.fromIter(params.filters!.id!.vals(), nhash) };
-    let name = do ? { Set.fromIter(params.filters!.name!.vals(), thash) };
-    let emitter = do ? { Set.fromIter(params.filters!.emitter!.vals(), phash) };
-    let stale = do ? { Set.fromIter(params.filters!.stale!.vals(), lhash) };
-    let numberOfAttempts = do ? { Set.fromIter(params.filters!.numberOfAttempts!.vals(), nhash) };
+    let eventId = do ?{ Set.fromIter(params.filters!.eventId!.vals(), nhash) };
+    let eventName = do ?{ Set.fromIter(params.filters!.eventName!.vals(), thash) };
+    let publisherId = do ?{ Set.fromIter(params.filters!.publisherId!.vals(), phash) };
+    let numberOfAttempts = do ?{ Set.fromIter(params.filters!.numberOfAttempts!.vals(), nhash) };
 
-    let events = Iter.toArray(Map.vals(state.events));
+    let events = Map.toArray<Nat, State.Event, State.Event>(stateEvents, func(key, value) = ?value);
 
-    let filteredEvents = Array.filter(events, func(event: StateTypes.Event): Bool {
-      ignore do ? { if (not Set.has(id!, nhash, event.id)) return false };
-      ignore do ? { if (not Set.has(name!, thash, event.name)) return false };
-      ignore do ? { if (not Set.has(emitter!, phash, event.emitter)) return false };
-      ignore do ? { if (not Set.has(stale!, lhash, event.stale)) return false };
-      ignore do ? { if (not Set.has(numberOfAttempts!, nhash, event.numberOfAttempts)) return false };
+    let filteredEvents = Array.filter(events, func(event: State.Event): Bool {
+      ignore do ?{ if (not Set.has(eventId!, nhash, event.eventId)) return false };
+      ignore do ?{ if (not Set.has(eventName!, thash, event.eventName)) return false };
+      ignore do ?{ if (not Set.has(publisherId!, phash, event.publisherId)) return false };
+      ignore do ?{ if (not Set.has(numberOfAttempts!, nhash, nat(event.numberOfAttempts))) return false };
 
       return true;
     });
 
-    let limitedEvents = Utils.arraySlice(filteredEvents, params.offset, ?(Option.get(params.offset, 0) + params.limit));
+    let limitedEvents = arraySlice(filteredEvents, params.offset, ?(coalesce(params.offset, 0) + params.limit));
 
-    let sharedEvents = Array.map(limitedEvents, func(event: StateTypes.Event): Types.SharedEvent {{
-      id = event.id;
-      name = event.name;
+    let sharedEvents = Array.map(limitedEvents, func(event: State.Event): Types.SharedEvent {{
+      eventId = event.eventId;
+      eventName = event.eventName;
       payload = event.payload;
-      emitter = event.emitter;
+      publisherId = event.publisherId;
       createdAt = event.createdAt;
-      nextProcessingTime = event.nextProcessingTime;
+      nextResendTime = event.nextResendTime;
       numberOfAttempts = event.numberOfAttempts;
-      stale = event.stale;
-      subscribers = Iter.toArray(Set.keys(event.subscribers));
+      subscribers = Set.toArray<Principal, Principal>(event.subscribers, func(key) = ?key);
     }});
 
     return { items = sharedEvents; totalCount = filteredEvents.size() };
@@ -238,103 +315,57 @@ shared deployer actor class EventSystem() = this {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared context func removeStaleSubscribers(): async () {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
+  public shared ({ caller }) func removeSubscribers(subscriberIds: [Principal]): async () {
+    if (not isAdmin(caller)) Debug.trap("Not authorized");
 
-    for (subscriber in Map.vals(state.subscribers)) if (subscriber.stale) removeSubscriberCascade(subscriber.canisterId);
+    for (subscriberId in subscriberIds.vals()) removeSubscriberCascade(subscriberId);
   };
 
-  public shared context func removeStaleEvents(): async () {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
+  public shared ({ caller }) func removeEvents(eventIds: [Nat]): async () {
+    if (not isAdmin(caller)) Debug.trap("Not authorized");
 
-    for (event in Map.vals(state.events)) if (event.stale) Map.delete(state.events, nhash, event.id);
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public shared context func recoverStaleSubscribers(): async () {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
-
-    for (subscriber in Map.vals(state.subscribers)) if (subscriber.stale) subscriber.stale := false;
-  };
-
-  public shared context func recoverStaleEvents(): async () {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
-
-    for (event in Map.vals(state.events)) if (event.stale) {
-      event.stale := false;
-      event.numberOfAttempts := 0;
-      event.nextProcessingTime := Time.now();
-
-      ignore processEvent(event);
-    };
+    for (eventId in eventIds.vals()) removeEventCascade(eventId);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared context func removeSubscriber(canisterId: Principal): async () {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
+  public query ({ caller }) func getAdmins(): async [Principal] {
+    if (not isAdmin(caller)) Debug.trap("Not authorized");
 
-    removeSubscriberCascade(canisterId);
+    return Set.toArray<Principal, Principal>(stateAdmins, func(key) = ?key);
   };
 
-  public shared context func removeEvent(id: Nat): async () {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
+  public shared ({ caller }) func addAdmin(principalId: Principal): async () {
+    if (not isAdmin(caller)) Debug.trap("Not authorized");
 
-    Map.delete(state.events, nhash, id);
+    Set.add(stateAdmins, phash, principalId);
   };
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  public shared ({ caller }) func removeAdmin(principalId: Principal): async () {
+    if (not isAdmin(caller)) Debug.trap("Not authorized");
 
-  public shared context func recoverSubscriber(canisterId: Principal): async () {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
-
-    ignore do ? { Map.get(state.subscribers, phash, canisterId)!.stale := false };
-  };
-
-  public shared context func recoverEvent(id: Nat): async () {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
-
-    ignore do ? {
-      let event = Map.get(state.events, nhash, id)!;
-
-      if (not event.stale) {
-        event.stale := false;
-        event.numberOfAttempts := 0;
-        event.nextProcessingTime := Time.now();
-
-        ignore processEvent(event);
-      };
-    };
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public query func getAdmins(): async [Principal] {
-    return Iter.toArray(Set.keys(state.admins));
-  };
-
-  public shared context func addAdmin(principalId: Principal): async () {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
-
-    Set.add(state.admins, phash, principalId);
-  };
-
-  public shared context func removeAdmin(principalId: Principal): async () {
-    if (not isAdmin(context.caller)) throw Error.reject("Not authorized");
-
-    Set.delete(state.admins, phash, principalId);
+    Set.delete(stateAdmins, phash, principalId);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   system func heartbeat(): async () {
-    for (event in Map.vals(state.events)) if (not event.stale and Time.now() >= event.nextProcessingTime) ignore processEvent(event);
+    let currentTime = time();
+
+    if (currentTime > state.nextBroadcastTime) {
+      state.nextBroadcastTime := currentTime + BROADCAST_DELAY;
+
+      for (event in Map.vals(stateEvents)) if (currentTime >= event.nextResendTime) ignore processEvent(event);
+    };
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query context func whoami(): async Principal {
-    return context.caller;
+  public query ({ caller }) func whoami(): async Principal {
+    return caller;
+  };
+
+  public query func getTime(): async Nat64 {
+    return time();
   };
 };

@@ -1,21 +1,33 @@
-import Map "mo:hashmap_4_0_0/Map";
-import Set "mo:hashmap_4_0_0/Set";
+import Map "mo:map_8_0_0_alpha_5/Map";
+import Set "mo:map_8_0_0_alpha_5/Set";
+import Prim "mo:prim";
 import MigrationTypes "../types";
+import Utils "./utils"
 
 module {
+  let { pthash } = Utils;
+
+  let { nhash; phash } = Map;
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   public func upgrade(migrationState: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
-    let #v0_0_0(#data(state)) = migrationState;
+    let state = switch (migrationState) { case (#v0_0_0(#data(state))) state; case (_) Prim.trap("Unexpected migration state") };
 
     return #v0_1_0(#data({
-      var admins = Set.new();
       var eventId = 1;
-      var subscribers = Map.new();
-      var events = Map.new();
+      var nextBroadcastTime = 0;
+      admins = Set.new(phash);
+      subscribers = Map.new(phash);
+      subscriptions = Map.new(pthash);
+      events = Map.new(nhash);
     }));
   };
 
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   public func downgrade(migrationState: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
-    let #v0_1_0(#data(state)) = migrationState;
+    let state = switch (migrationState) { case (#v0_1_0(#data(state))) state; case (_) Prim.trap("Unexpected migration state") };
 
     return #v0_0_0(#data);
   };

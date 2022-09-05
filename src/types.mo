@@ -1,33 +1,58 @@
 import Candy "mo:candy/types";
 import MigrationTypes "./migrations/types";
-import Time "mo:base/Time";
 
 module {
   let StateTypes = MigrationTypes.Current;
 
   public type SubscriberActor = actor {
-    handleEvent: (id: Nat, canisterId: Principal, name: Text, payload: Candy.CandyValue) -> ();
+    handleEvent: (eventId: Nat, publisherId: Principal, eventName: Text, payload: Candy.CandyValue) -> ();
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public type SharedSubscriber = {
-    canisterId: Principal;
-    createdAt: Time.Time;
-    stale: Bool;
+    subscriberId: Principal;
+    createdAt: Nat64;
+    activeSubscriptions: Nat32;
     subscriptions: [Text];
   };
 
-  public type FetchSubscribersFilters = {
-    canisterId: ?[Principal];
-    stale: ?[Bool];
-    subscriptions: ?[Text];
+  public type SharedEvent = {
+    eventId: Nat;
+    eventName: Text;
+    payload: Candy.CandyValue;
+    publisherId: Principal;
+    createdAt: Nat64;
+    nextResendTime: Nat64;
+    numberOfAttempts: Nat64;
+    subscribers: [Principal];
   };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public type SubscriptionOptions = [{
+    #stopped: Bool;
+    #skip: Nat32;
+  }];
+
+  public type UnsubscribeOptions = [{
+    #purge;
+  }];
+
+  public type MissedEventOptions = [{
+    #from: Nat64;
+    #to: Nat64;
+  }];
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public type FetchSubscribersParams = {
     limit: Nat;
     offset: ?Nat;
-    filters: ?FetchSubscribersFilters;
+    filters: ?{
+      subscriberId: ?[Principal];
+      subscriptions: ?[Text];
+    };
   };
 
   public type FetchSubscribersResponse = {
@@ -37,23 +62,10 @@ module {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public type SharedEvent = {
-    id: Nat;
-    name: Text;
-    payload: Candy.CandyValue;
-    emitter: Principal;
-    createdAt: Time.Time;
-    nextProcessingTime: Time.Time;
-    numberOfAttempts: Nat;
-    stale: Bool;
-    subscribers: [Principal];
-  };
-
   public type FetchEventsFilters = {
-    id: ?[Nat];
-    name: ?[Text];
-    emitter: ?[Principal];
-    stale: ?[Bool];
+    eventId: ?[Nat];
+    eventName: ?[Text];
+    publisherId: ?[Principal];
     numberOfAttempts: ?[Nat];
   };
 

@@ -17,6 +17,8 @@ module {
     };
   };
 
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   public func migrate(prevState: MigrationTypes.State, nextState: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
     var state = prevState;
     var migrationId = getMigrationId(prevState);
