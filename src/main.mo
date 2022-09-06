@@ -104,8 +104,8 @@ shared ({ caller = deployer }) actor class EventSystem() {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public shared ({ caller }) func subscribe(eventName: Text, options: Types.SubscriptionOptions): async () {
-    if (eventName.size() > 50) Debug.trap("Event eventName length limit reached");
-    if (options.size() > 2) Debug.trap("InvaleventId number of options");
+    if (eventName.size() > 50) Debug.trap("Event name length limit reached");
+    if (options.size() > 2) Debug.trap("Invalid number of options");
 
     let subId = (caller, eventName);
 
@@ -146,8 +146,8 @@ shared ({ caller = deployer }) actor class EventSystem() {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public shared ({ caller }) func unsubscribe(eventName: Text, options: Types.UnsubscribeOptions): async () {
-    if (eventName.size() > 50) Debug.trap("Event eventName length limit reached");
-    if (options.size() > 1) Debug.trap("InvaleventId number of options");
+    if (eventName.size() > 50) Debug.trap("Event name length limit reached");
+    if (options.size() > 1) Debug.trap("Invalid number of options");
 
     ignore do ?{
       let subscriber = Map.get(stateSubscribers, phash, caller)!;
@@ -170,7 +170,7 @@ shared ({ caller = deployer }) actor class EventSystem() {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public shared ({ caller }) func publish(eventName: Text, payload: Candy.CandyValue): async () {
-    if (eventName.size() > 50) Debug.trap("Event eventName length limit reached");
+    if (eventName.size() > 50) Debug.trap("Event name length limit reached");
 
     let eventId = state.eventId;
     let subscribers = Set.new(phash);
@@ -211,8 +211,8 @@ shared ({ caller = deployer }) actor class EventSystem() {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public shared ({ caller }) func requestMissedEvents(eventName: Text, options: Types.MissedEventOptions): async () {
-    if (eventName.size() > 50) Debug.trap("Event eventName length limit reached");
-    if (options.size() > 2) Debug.trap("InvaleventId number of options");
+    if (eventName.size() > 50) Debug.trap("Event name length limit reached");
+    if (options.size() > 2) Debug.trap("Invalid number of options");
 
     ignore do ?{
       let subscription = Map.get(stateSubscriptions, pthash, (caller, eventName))!;
