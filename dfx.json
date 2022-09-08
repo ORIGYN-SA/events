@@ -1,6 +1,6 @@
 {
   "canisters": {
-    "event_system": {
+    "drout": {
       "main": "src/main.mo",
       "type": "motoko"
     }

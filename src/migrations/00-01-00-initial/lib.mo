@@ -20,6 +20,8 @@ module {
       admins = Set.new(phash);
       subscribers = Map.new(phash);
       subscriptions = Map.new(pthash);
+      publishers = Map.new(phash);
+      publications = Map.new(pthash);
       events = Map.new(nhash);
     }));
   };
