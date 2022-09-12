@@ -59,7 +59,7 @@ module {
   } = object {
     let { removeEventCascade } = Cascade.init(state, deployer);
 
-    let { subscribers; subscriptions; publishers; publications; events } = state;
+    let { subscribers; subscriptions; events } = state;
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -73,6 +73,10 @@ module {
         var activeSubscriptions = 0:Nat8;
         subscriptions = Set.new(thash);
       }));
+
+      Set.add(subscriber.subscriptions, thash, eventName);
+
+      if (Set.size(subscriber.subscriptions) > Const.SUBSCRIPTIONS_LIMIT) Debug.trap("Subscriptions limit reached");
 
       let subscription = Map.update<State.PT, State.Subscription>(subscriptions, pthash, (caller, eventName), func(key, value) = coalesce(value, {
         eventName = eventName;
@@ -88,17 +92,14 @@ module {
       if (not subscription.active) {
         subscription.active := true;
         subscriber.activeSubscriptions +%= 1;
+
+        if (subscriber.activeSubscriptions > Const.ACTIVE_SUBSCRIPTIONS_LIMIT) Debug.trap("Active subscriptions limit reached");
       };
 
       for (option in options.vals()) switch (option) {
         case (#stopped(stopped)) subscription.stopped := stopped;
         case (#skip(skip)) subscription.skip := skip;
       };
-
-      Set.add(subscriber.subscriptions, thash, eventName);
-
-      if (subscriber.activeSubscriptions > Const.ACTIVE_SUBSCRIPTIONS_LIMIT) Debug.trap("Active subscriptions limit reached");
-      if (Set.size(subscriber.subscriptions) > Const.SUBSCRIPTIONS_LIMIT) Debug.trap("Subscriptions limit reached");
     };
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

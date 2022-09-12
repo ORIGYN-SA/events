@@ -98,6 +98,10 @@ module {
         publications = Set.new(thash);
       }));
 
+      Set.add(publisher.publications, thash, eventName);
+
+      if (Set.size(publisher.publications) > Const.PUBLICATIONS_LIMIT) Debug.trap("Publications limit reached");
+
       let publication = Map.update<State.PT, State.Publication>(publications, pthash, (caller, eventName), func(key, value) = coalesce(value, {
         eventName = eventName;
         publisherId = caller;
@@ -108,6 +112,8 @@ module {
       if (not publication.active) {
         publication.active := true;
         publisher.activePublications +%= 1;
+
+        if (publisher.activePublications > Const.ACTIVE_PUBLICATIONS_LIMIT) Debug.trap("Active publications limit reached");
       };
 
       let { whitelist } = publication;
@@ -125,6 +131,8 @@ module {
           if (principalIds.size() > Const.WHITELIST_LIMIT) Debug.trap("WhitelistAdd option length limit reached");
 
           for (principalId in principalIds.vals()) Set.add(whitelist, phash, principalId);
+
+          if (Set.size(whitelist) > Const.WHITELIST_LIMIT) Debug.trap("Whitelist length limit reached");
         };
 
         case (#whitelistRemove(principalIds)) {
@@ -133,12 +141,6 @@ module {
           for (principalId in principalIds.vals()) Set.delete(whitelist, phash, principalId);
         };
       };
-
-      Set.add(publisher.publications, thash, eventName);
-
-      if (Set.size(whitelist) > Const.WHITELIST_LIMIT) Debug.trap("Whitelist length limit reached");
-      if (publisher.activePublications > Const.ACTIVE_PUBLICATIONS_LIMIT) Debug.trap("Active publications limit reached");
-      if (Set.size(publisher.publications) > Const.PUBLICATIONS_LIMIT) Debug.trap("Publications limit reached");
     };
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
