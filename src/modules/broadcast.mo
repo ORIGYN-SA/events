@@ -29,8 +29,6 @@ module {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     func broadcastEvent(event: State.Event): async () {
-      Prim.debugPrint(debug_show("Processing event", event.id));
-
       if (event.numberOfAttempts < Const.RESEND_ATTEMPTS_LIMIT) {
         let subscribersIter = Map.entries(event.subscribers);
         let eventBroadcastStartTime = time();
