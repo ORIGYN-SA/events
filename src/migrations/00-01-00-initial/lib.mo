@@ -16,6 +16,7 @@ module {
 
     return #v0_1_0(#data({
       var eventId = 1;
+      var broadcastActive = false;
       var nextBroadcastTime = 0;
       admins = Set.new(phash);
       subscribers = Map.new(phash);

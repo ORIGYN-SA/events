@@ -8,7 +8,7 @@ module {
 
   let { pthash } = Utils;
 
-  let { nhash; thash; phash; lhash; calcHash } = Map;
+  let { nhash; thash; phash; lhash } = Map;
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -23,10 +23,9 @@ module {
     public func removeEventCascade(eventId: Nat) {
       ignore do ?{
         let event = Map.remove(events, nhash, eventId)!;
-        let eventName = event.eventName;
 
-        for (subscriberId in Set.keys(event.subscribers)) ignore do ?{
-          let subscription = Map.get(subscriptions, pthash, (subscriberId, eventName))!;
+        for (subscriberId in Map.keys(event.subscribers)) ignore do ?{
+          let subscription = Map.get(subscriptions, pthash, (subscriberId, event.eventName))!;
 
           Set.delete(subscription.events, nhash, eventId);
         };
@@ -37,8 +36,7 @@ module {
 
     public func removeSubscriberCascade(subscriberId: Principal) {
       ignore do ?{
-        let subscriberIdHash = calcHash(phash, subscriberId);
-        let subscriber = Map.remove(subscribers, subscriberIdHash, subscriberId)!;
+        let subscriber = Map.remove(subscribers, phash, subscriberId)!;
 
         for (eventName in Set.keys(subscriber.subscriptions)) ignore do ?{
           let subscription = Map.remove(subscriptions, pthash, (subscriberId, eventName))!;
@@ -46,9 +44,10 @@ module {
           for (eventId in Set.keys(subscription.events)) ignore do ?{
             let event = Map.get(events, nhash, eventId)!;
 
-            Set.delete(event.subscribers, subscriberIdHash, subscriberId);
+            Set.delete(event.resendRequests, phash, subscriberId);
+            Map.delete(event.subscribers, phash, subscriberId);
 
-            if (Set.size(event.subscribers) == 0) removeEventCascade(eventId);
+            if (Map.size(event.subscribers) == 0) removeEventCascade(eventId);
           };
         };
       };

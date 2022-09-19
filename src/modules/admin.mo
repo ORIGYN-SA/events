@@ -15,7 +15,7 @@ module {
 
   let { arraySlice } = Utils;
 
-  let { nhash; thash; phash; lhash; calcHash } = Map;
+  let { nhash; thash; phash; lhash } = Map;
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -102,7 +102,7 @@ module {
       let subscribersArray = Map.toArray<Principal, State.Subscriber, State.Subscriber>(subscribers, func(key, value) = ?value);
 
       let filteredSubscribers = Array.filter(subscribersArray, func(subscriber: State.Subscriber): Bool {
-        ignore do ?{ if (not Set.has(subscriberId!, phash, subscriber.subscriberId)) return false };
+        ignore do ?{ if (not Set.has(subscriberId!, phash, subscriber.id)) return false };
         ignore do ?{ if (not Set.some<Text>(subscriptions!, func(item) = Set.has(subscriber.subscriptions, thash, item))) return false };
 
         return true;
@@ -111,7 +111,7 @@ module {
       let limitedSubscribers = arraySlice(filteredSubscribers, params.offset, ?(coalesce(params.offset, 0) + params.limit));
 
       let sharedSubscribers = Array.map(limitedSubscribers, func(subscriber: State.Subscriber): SharedSubscriber {{
-        subscriberId = subscriber.subscriberId;
+        subscriberId = subscriber.id;
         createdAt = subscriber.createdAt;
         activeSubscriptions = subscriber.activeSubscriptions;
         subscriptions = Set.toArray<Text, Text>(subscriber.subscriptions, func(key) = ?key);
@@ -132,7 +132,7 @@ module {
       let eventsArray = Map.toArray<Nat, State.Event, State.Event>(events, func(key, value) = ?value);
 
       let filteredEvents = Array.filter(eventsArray, func(event: State.Event): Bool {
-        ignore do ?{ if (not Set.has(eventId!, nhash, event.eventId)) return false };
+        ignore do ?{ if (not Set.has(eventId!, nhash, event.id)) return false };
         ignore do ?{ if (not Set.has(eventName!, thash, event.eventName)) return false };
         ignore do ?{ if (not Set.has(publisherId!, phash, event.publisherId)) return false };
 
@@ -142,14 +142,14 @@ module {
       let limitedEvents = arraySlice(filteredEvents, params.offset, ?(coalesce(params.offset, 0) + params.limit));
 
       let sharedEvents = Array.map(limitedEvents, func(event: State.Event): SharedEvent {{
-        eventId = event.eventId;
+        eventId = event.id;
         eventName = event.eventName;
         payload = event.payload;
         publisherId = event.publisherId;
         createdAt = event.createdAt;
         nextResendTime = event.nextResendTime;
         numberOfAttempts = event.numberOfAttempts;
-        subscribers = Set.toArray<Principal, Principal>(event.subscribers, func(key) = ?key);
+        subscribers = Map.toArray<Principal, Nat8, Principal>(event.subscribers, func(key, value) = ?key);
       }});
 
       return { items = sharedEvents; totalCount = filteredEvents.size() };

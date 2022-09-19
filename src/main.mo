@@ -1,9 +1,15 @@
 import Admin "./modules/admin";
+import Broadcast "./modules/broadcast";
 import Candy "mo:candy/types";
+import Cascade "./modules/cascade";
+import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
+import Error "mo:base/Error";
+import Map "mo:map/Map";
 import MigrationTypes "./migrations/types";
 import Migrations "./migrations";
 import Prim "mo:prim";
+import Principal "mo:base/Principal";
 import Publish "./modules/publish";
 import Subscribe "./modules/subscribe";
 
@@ -24,7 +30,11 @@ shared (deployer) actor class EventSystem() {
 
   let SubscribeModule = Subscribe.init(state, deployer.caller);
 
+  let BroadcastModule = Broadcast.init(state, deployer.caller);
+
   let AdminModule = Admin.init(state, deployer.caller);
+
+  let CascadeModule = Cascade.init(state, deployer.caller);
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -37,7 +47,7 @@ shared (deployer) actor class EventSystem() {
   };
 
   public shared (context) func publish(eventName: Text, payload: Candy.CandyValue): async () {
-    await PublishModule.publish(context.caller, eventName, payload);
+    PublishModule.publish(context.caller, eventName, payload);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +61,7 @@ shared (deployer) actor class EventSystem() {
   };
 
   public shared (context) func requestMissedEvents(eventName: Text, options: Subscribe.MissedEventOptions): async () {
-    await SubscribeModule.requestMissedEvents(context.caller, eventName, options);
+    SubscribeModule.requestMissedEvents(context.caller, eventName, options);
   };
 
   public shared (context) func confirmEventProcessed(eventId: Nat): async () {
@@ -101,6 +111,6 @@ shared (deployer) actor class EventSystem() {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   system func heartbeat(): async () {
-    await PublishModule.broadcast();
+    await BroadcastModule.broadcast();
   };
 };

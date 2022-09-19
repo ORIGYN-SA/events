@@ -17,7 +17,7 @@ module {
 
   let { pthash } = Utils;
 
-  let { nhash; thash; phash; lhash; calcHash } = Map;
+  let { nhash; thash; phash; lhash } = Map;
 
   let { time } = Prim;
 
@@ -54,7 +54,7 @@ module {
   public func init(state: State.State, deployer: Principal): {
     subscribe: (caller: Principal, eventName: Text, options: SubscriptionOptions) -> ();
     unsubscribe: (caller: Principal, eventName: Text, options: UnsubscribeOptions) -> ();
-    requestMissedEvents: (caller: Principal, eventName: Text, options: MissedEventOptions) -> async ();
+    requestMissedEvents: (caller: Principal, eventName: Text, options: MissedEventOptions) -> ();
     confirmEventProcessed: (caller: Principal, eventId: Nat) -> ();
   } = object {
     let { removeEventCascade } = Cascade.init(state, deployer);
@@ -68,7 +68,7 @@ module {
       if (options.size() > SubscriptionOptionsSize) Debug.trap("Invalid number of options");
 
       let subscriber = Map.update<Principal, State.Subscriber>(subscribers, phash, caller, func(key, value) = coalesce(value, {
-        subscriberId = caller;
+        id = caller;
         createdAt = time();
         var activeSubscriptions = 0:Nat8;
         subscriptions = Set.new(thash);
@@ -78,7 +78,7 @@ module {
 
       if (Set.size(subscriber.subscriptions) > Const.SUBSCRIPTIONS_LIMIT) Debug.trap("Subscriptions limit reached");
 
-      let subscription = Map.update<State.PT, State.Subscription>(subscriptions, pthash, (caller, eventName), func(key, value) = coalesce(value, {
+      let subscription = Map.update<State.SubId, State.Subscription>(subscriptions, pthash, (caller, eventName), func(key, value) = coalesce(value, {
         eventName = eventName;
         subscriberId = caller;
         createdAt = time();
@@ -128,13 +128,12 @@ module {
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public func requestMissedEvents(caller: Principal, eventName: Text, options: MissedEventOptions): async () {
+    public func requestMissedEvents(caller: Principal, eventName: Text, options: MissedEventOptions) {
       if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap("Event name length limit reached");
       if (options.size() > MissedEventOptionsSize) Debug.trap("Invalid number of options");
 
       ignore do ?{
         let subscription = Map.get(subscriptions, pthash, (caller, eventName))!;
-        let subscriberActor = actor(Principal.toText(caller)):SubscriberActor;
         var from = 0:Nat64;
         var to = 0:Nat64 -% 1;
 
@@ -147,7 +146,9 @@ module {
           let event = Map.get(events, nhash, eventId)!;
 
           if (event.createdAt >= from and event.createdAt <= to) {
-            subscriberActor.handleEvent(event.eventId, event.publisherId, event.eventName, event.payload);
+            Set.add(event.resendRequests, phash, caller);
+
+            state.nextBroadcastTime := time();
           };
         };
       };
@@ -159,9 +160,9 @@ module {
       ignore do ?{
         let event = Map.get(events, nhash, eventId)!;
 
-        Set.delete(event.subscribers, phash, caller);
+        Map.delete(event.subscribers, phash, caller);
 
-        if (Set.size(event.subscribers) == 0) removeEventCascade(eventId);
+        if (Map.size(event.subscribers) == 0) removeEventCascade(eventId);
       };
     };
   };

@@ -3,6 +3,8 @@ module {
 
   public let BROADCAST_DELAY = 180_000_000_000:Nat64; // 3 * 60 * 1_000_000_000
 
+  public let BROADCAST_BATCH_SIZE = 100:Nat8;
+
   public let RESEND_ATTEMPTS_LIMIT = 8:Nat8;
 
   public let EVENT_NAME_LENGTH_LIMIT = 50;
