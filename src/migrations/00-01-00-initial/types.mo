@@ -3,14 +3,6 @@ import Map "mo:map_8_0_0_alpha_5/Map";
 import Set "mo:map_8_0_0_alpha_5/Set";
 
 module {
-  public type SubId = (Principal, Text);
-
-  public type PubId = (Principal, Text);
-
-  public type NumberOfAttempts = Nat8;
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   public type Subscriber = {
     id: Principal;
     createdAt: Nat64;
@@ -26,6 +18,11 @@ module {
     var skipped: Nat8;
     var active: Bool;
     var stopped: Bool;
+    var numberOfEvents: Nat64;
+    var numberOfNotifications: Nat64;
+    var numberOfResendNotifications: Nat64;
+    var numberOfRequestedNotifications: Nat64;
+    var numberOfConfirmations: Nat64;
     events: Set.Set<Nat>;
   };
 
@@ -40,19 +37,24 @@ module {
     eventName: Text;
     publisherId: Principal;
     var active: Bool;
+    var numberOfEvents: Nat64;
+    var numberOfNotifications: Nat64;
+    var numberOfResendNotifications: Nat64;
+    var numberOfRequestedNotifications: Nat64;
+    var numberOfConfirmations: Nat64;
     whitelist: Set.Set<Principal>;
   };
 
   public type Event = {
     id: Nat;
     eventName: Text;
-    payload: Candy.CandyValue;
     publisherId: Principal;
+    payload: Candy.CandyValue;
     createdAt: Nat64;
     var nextResendTime: Nat64;
-    var numberOfAttempts: NumberOfAttempts;
+    var numberOfAttempts: Nat8;
     resendRequests: Set.Set<Principal>;
-    subscribers: Map.Map<Principal, NumberOfAttempts>;
+    subscribers: Map.Map<Principal, Nat8>;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -62,10 +64,10 @@ module {
     var broadcastActive: Bool;
     var nextBroadcastTime: Nat64;
     admins: Set.Set<Principal>;
-    subscribers: Map.Map<Principal, Subscriber>;
-    subscriptions: Map.Map<SubId, Subscription>;
     publishers: Map.Map<Principal, Publisher>;
-    publications: Map.Map<PubId, Publication>;
+    publications: Map.Map<Text, Map.Map<Principal, Publication>>;
+    subscribers: Map.Map<Principal, Subscriber>;
+    subscriptions: Map.Map<Text, Map.Map<Principal, Subscription>>;
     events: Map.Map<Nat, Event>;
   };
 };

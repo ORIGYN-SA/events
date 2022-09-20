@@ -2,12 +2,9 @@ import Map "mo:map_8_0_0_alpha_5/Map";
 import Set "mo:map_8_0_0_alpha_5/Set";
 import Prim "mo:prim";
 import MigrationTypes "../types";
-import Utils "./utils"
 
 module {
-  let { pthash } = Utils;
-
-  let { nhash; phash } = Map;
+  let { nhash; thash; phash } = Map;
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -19,10 +16,10 @@ module {
       var broadcastActive = false;
       var nextBroadcastTime = 0;
       admins = Set.new(phash);
-      subscribers = Map.new(phash);
-      subscriptions = Map.new(pthash);
       publishers = Map.new(phash);
-      publications = Map.new(pthash);
+      publications = Map.new(thash);
+      subscribers = Map.new(phash);
+      subscriptions = Map.new(thash);
       events = Map.new(nhash);
     }));
   };

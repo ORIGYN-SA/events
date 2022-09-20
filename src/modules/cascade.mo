@@ -1,12 +1,9 @@
 import Map "mo:map/Map";
 import MigrationTypes "../migrations/types";
 import Set "mo:map/Set";
-import Utils "../utils/misc";
 
 module {
   let State = MigrationTypes.Current;
-
-  let { pthash } = Utils;
 
   let { nhash; thash; phash; lhash } = Map;
 
@@ -16,7 +13,7 @@ module {
     removeEventCascade: (eventId: Nat) -> ();
     removeSubscriberCascade: (subscriberId: Principal) -> ();
   } = object {
-    let { subscribers; subscriptions; publishers; publications; events } = state;
+    let { subscribers; subscriptions; events } = state;
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -25,7 +22,8 @@ module {
         let event = Map.remove(events, nhash, eventId)!;
 
         for (subscriberId in Map.keys(event.subscribers)) ignore do ?{
-          let subscription = Map.get(subscriptions, pthash, (subscriberId, event.eventName))!;
+          let subscriptionGroup = Map.get(subscriptions, thash, event.eventName)!;
+          let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
 
           Set.delete(subscription.events, nhash, eventId);
         };
@@ -39,7 +37,10 @@ module {
         let subscriber = Map.remove(subscribers, phash, subscriberId)!;
 
         for (eventName in Set.keys(subscriber.subscriptions)) ignore do ?{
-          let subscription = Map.remove(subscriptions, pthash, (subscriberId, eventName))!;
+          let subscriptionGroup = Map.get(subscriptions, thash, eventName)!;
+          let subscription = Map.remove(subscriptionGroup, phash, subscriberId)!;
+
+          if (Map.size(subscriptionGroup) == 0) Map.delete(subscriptions, thash, eventName);
 
           for (eventId in Set.keys(subscription.events)) ignore do ?{
             let event = Map.get(events, nhash, eventId)!;

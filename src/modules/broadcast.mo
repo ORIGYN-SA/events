@@ -11,7 +11,7 @@ import Utils "../utils/misc";
 module {
   let State = MigrationTypes.Current;
 
-  let { nat8ToNat64; pthash } = Utils;
+  let { nat8ToNat64 } = Utils;
 
   let { nhash; thash; phash; lhash } = Map;
 
@@ -24,7 +24,7 @@ module {
   } = object {
     let { removeEventCascade } = Cascade.init(state, deployer);
 
-    let { subscribers; subscriptions; events } = state;
+    let { publications; subscribers; subscriptions; events } = state;
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -37,7 +37,8 @@ module {
 
         while (iterActive) await async label broadcastBatch {
           for ((subscriberId, numberOfAttempts) in subscribersIter) if (numberOfAttempts <= event.numberOfAttempts) ignore do ?{
-            let subscription = Map.get(subscriptions, pthash, (subscriberId, event.eventName))!;
+            let subscriptionGroup = Map.get(subscriptions, thash, event.eventName)!;
+            let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
 
             if (subscription.active and not subscription.stopped) {
               let subscriberActor: Subscribe.SubscriberActor = actor(Principal.toText(subscriberId));
@@ -48,6 +49,18 @@ module {
               Set.delete(event.resendRequests, phash, subscriberId);
 
               notificationsCount +%= 1;
+              subscription.numberOfNotifications +%= 1;
+
+              if (numberOfAttempts > 0) subscription.numberOfResendNotifications +%= 1;
+
+              ignore do ?{
+                let publicationGroup = Map.get(publications, thash, event.eventName)!;
+                let publication = Map.get(publicationGroup, phash, event.publisherId)!;
+
+                publication.numberOfNotifications +%= 1;
+
+                if (numberOfAttempts > 0) publication.numberOfResendNotifications +%= 1;
+              };
 
               if (notificationsCount % Const.BROADCAST_BATCH_SIZE == 0) break broadcastBatch;
             };
@@ -76,7 +89,25 @@ module {
 
           subscriberActor.handleEvent(event.id, event.publisherId, event.eventName, event.payload);
 
+          Set.delete(event.resendRequests, phash, subscriberId);
+
           notificationsCount +%= 1;
+
+          ignore do ?{
+            let subscriptionGroup = Map.get(subscriptions, thash, event.eventName)!;
+            let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
+
+            subscription.numberOfNotifications +%= 1;
+            subscription.numberOfRequestedNotifications +%= 1;
+          };
+
+          ignore do ?{
+            let publicationGroup = Map.get(publications, thash, event.eventName)!;
+            let publication = Map.get(publicationGroup, phash, event.publisherId)!;
+
+            publication.numberOfNotifications +%= 1;
+            publication.numberOfRequestedNotifications +%= 1;
+          };
 
           if (notificationsCount % Const.BROADCAST_BATCH_SIZE == 0) break broadcastBatch;
         };

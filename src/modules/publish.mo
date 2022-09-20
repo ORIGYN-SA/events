@@ -7,14 +7,11 @@ import Option "mo:base/Option";
 import Prim "mo:prim";
 import Principal "mo:base/Principal";
 import Set "mo:map/Set";
-import Utils "../utils/misc";
 
 module {
   let State = MigrationTypes.Current;
 
   let { get = coalesce } = Option;
-
-  let { pthash } = Utils;
 
   let { nhash; thash; phash; lhash } = Map;
 
@@ -39,15 +36,15 @@ module {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public func init(state: State.State, deployer: Principal): {
-    registerPublication: (caller: Principal, eventName: Text, options: PublicationOptions) -> ();
+    registerPublication: (caller: Principal, eventName: Text, options: PublicationOptions) -> State.Publication;
     removePublication: (caller: Principal, eventName: Text, options: RemovePublicationOptions) -> ();
     publish: (caller: Principal, eventName: Text, payload: Candy.CandyValue) -> ();
   } = object {
-    let { subscribers; subscriptions; publishers; publications; events } = state;
+    let { publishers; publications; subscribers; subscriptions; events } = state;
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public func registerPublication(caller: Principal, eventName: Text, options: PublicationOptions) {
+    public func registerPublication(caller: Principal, eventName: Text, options: PublicationOptions): State.Publication {
       if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap("Event name length limit reached");
       if (options.size() > PublicationOptionsSize) Debug.trap("Invalid number of options");
 
@@ -62,10 +59,19 @@ module {
 
       if (Set.size(publisher.publications) > Const.PUBLICATIONS_LIMIT) Debug.trap("Publications limit reached");
 
-      let publication = Map.update<State.PubId, State.Publication>(publications, pthash, (caller, eventName), func(key, value) = coalesce(value, {
+      let publicationGroup = Map.update<Text, Map.Map<Principal, State.Publication>>(publications, thash, eventName, func(key, value) {
+        return coalesce<Map.Map<Principal, State.Publication>>(value, Map.new(phash));
+      });
+
+      let publication = Map.update<Principal, State.Publication>(publicationGroup, phash, caller, func(key, value) = coalesce(value, {
         eventName = eventName;
         publisherId = caller;
         var active = false;
+        var numberOfEvents = 0:Nat64;
+        var numberOfNotifications = 0:Nat64;
+        var numberOfResendNotifications = 0:Nat64;
+        var numberOfRequestedNotifications = 0:Nat64;
+        var numberOfConfirmations = 0:Nat64;
         whitelist = Set.new(phash);
       }));
 
@@ -99,6 +105,8 @@ module {
           for (principalId in principalIds.vals()) Set.delete(publication.whitelist, phash, principalId);
         };
       };
+
+      return publication;
     };
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +117,8 @@ module {
 
       ignore do ?{
         let publisher = Map.get(publishers, phash, caller)!;
-        let publication = Map.get(publications, pthash, (caller, eventName))!;
+        let publicationGroup = Map.get(publications, thash, eventName)!;
+        let publication = Map.get(publicationGroup, phash, caller)!;
 
         if (publication.active) {
           publication.active := false;
@@ -119,7 +128,9 @@ module {
         for (option in options.vals()) switch (option) {
           case (#purge) {
             Set.delete(publisher.publications, thash, eventName);
-            Map.delete(publications, pthash, (caller, eventName));
+            Map.delete(publicationGroup, phash, caller);
+
+            if (Map.size(publicationGroup) == 0) Map.delete(publications, thash, eventName);
           };
         };
       };
@@ -130,44 +141,46 @@ module {
     public func publish(caller: Principal, eventName: Text, payload: Candy.CandyValue) {
       if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap("Event name length limit reached");
 
-      let eventSubscribers = Map.new<Principal, Nat8>(phash);
-
-      registerPublication(caller, eventName, []);
-
       ignore do ?{
-        let publication = Map.get(publications, pthash, (caller, eventName))!;
-        let subscriberIds = if (Set.size(publication.whitelist) > 0) Set.keys(publication.whitelist) else Map.keys(subscribers);
+        let publication = registerPublication(caller, eventName, []);
+        let subscriptionGroup = Map.get(subscriptions, thash, eventName)!;
+        let eventSubscribers = Map.new<Principal, Nat8>(phash);
+        let subscriberIds = if (Set.size(publication.whitelist) > 0) Set.keys(publication.whitelist) else Map.keys(subscriptionGroup);
+
+        publication.numberOfEvents +%= 1;
 
         for (subscriberId in subscriberIds) ignore do ?{
-          let subscription = Map.get(subscriptions, pthash, (subscriberId, eventName))!;
+          let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
 
           if (subscription.active) if (subscription.skipped >= subscription.skip) {
             subscription.skipped := 0;
 
             Map.set(eventSubscribers, phash, subscriberId, 0:Nat8);
             Set.add(subscription.events, nhash, state.eventId);
+
+            subscription.numberOfEvents +%= 1;
           } else {
-            subscription.skipped += 1;
+            subscription.skipped +%= 1;
           };
         };
-      };
 
-      if (Map.size(eventSubscribers) > 0) {
-        Map.set(events, nhash, state.eventId, {
-          id = state.eventId;
-          eventName = eventName;
-          payload = payload;
-          publisherId = caller;
-          createdAt = time();
-          var nextResendTime = time();
-          var numberOfAttempts = 0:Nat8;
-          resendRequests = Set.new(phash);
-          subscribers = eventSubscribers;
-        });
+        if (Map.size(eventSubscribers) > 0) {
+          Map.set(events, nhash, state.eventId, {
+            id = state.eventId;
+            eventName = eventName;
+            publisherId = caller;
+            payload = payload;
+            createdAt = time();
+            var nextResendTime = time();
+            var numberOfAttempts = 0:Nat8;
+            resendRequests = Set.new(phash);
+            subscribers = eventSubscribers;
+          });
 
-        state.eventId += 1;
+          state.eventId += 1;
 
-        state.nextBroadcastTime := time();
+          state.nextBroadcastTime := time();
+        };
       };
     };
   };

@@ -35,7 +35,7 @@ shared (deployer) actor class EventSystem() {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public shared (context) func registerPublication(eventName: Text, options: Publish.PublicationOptions): async () {
-    PublishModule.registerPublication(context.caller, eventName, options);
+    ignore PublishModule.registerPublication(context.caller, eventName, options);
   };
 
   public shared (context) func removePublication(eventName: Text, options: Publish.RemovePublicationOptions): async () {
@@ -49,7 +49,7 @@ shared (deployer) actor class EventSystem() {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public shared (context) func subscribe(eventName: Text, options: Subscribe.SubscriptionOptions): async () {
-    SubscribeModule.subscribe(context.caller, eventName, options);
+    ignore SubscribeModule.subscribe(context.caller, eventName, options);
   };
 
   public shared (context) func unsubscribe(eventName: Text, options: Subscribe.UnsubscribeOptions): async () {
