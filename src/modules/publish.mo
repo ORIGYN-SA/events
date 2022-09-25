@@ -66,6 +66,7 @@ module {
       let publication = Map.update<Principal, State.Publication>(publicationGroup, phash, caller, func(key, value) = coalesce(value, {
         eventName = eventName;
         publisherId = caller;
+        createdAt = time();
         var active = false;
         var numberOfEvents = 0:Nat64;
         var numberOfNotifications = 0:Nat64;
@@ -171,7 +172,7 @@ module {
             publisherId = caller;
             payload = payload;
             createdAt = time();
-            var nextResendTime = time();
+            var nextBroadcastTime = time();
             var numberOfAttempts = 0:Nat8;
             resendRequests = Set.new(phash);
             subscribers = eventSubscribers;

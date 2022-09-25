@@ -70,7 +70,7 @@ module {
         };
 
         event.numberOfAttempts +%= 1;
-        event.nextResendTime := eventBroadcastStartTime + Const.RESEND_DELAY * 2 ** nat8ToNat64(event.numberOfAttempts -% 1);
+        event.nextBroadcastTime := eventBroadcastStartTime + Const.RESEND_DELAY * 2 ** nat8ToNat64(event.numberOfAttempts -% 1);
       } else {
         removeEventCascade(event.id);
       };
@@ -124,7 +124,7 @@ module {
       if (not state.broadcastActive and broadcastStartTime >= state.nextBroadcastTime) try {
         state.broadcastActive := true;
 
-        for (event in Map.vals(events)) if (broadcastStartTime >= event.nextResendTime) await broadcastEvent(event);
+        for (event in Map.vals(events)) if (broadcastStartTime >= event.nextBroadcastTime) await broadcastEvent(event);
         for (event in Map.vals(events)) if (Set.size(event.resendRequests) > 0) await broadcastResendRequests(event);
 
         state.broadcastActive := false;

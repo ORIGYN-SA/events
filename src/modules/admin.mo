@@ -32,7 +32,7 @@ module {
     payload: Candy.CandyValue;
     publisherId: Principal;
     createdAt: Nat64;
-    nextResendTime: Nat64;
+    nextBroadcastTime: Nat64;
     numberOfAttempts: Nat8;
     subscribers: [Principal];
   };
@@ -147,7 +147,7 @@ module {
         payload = event.payload;
         publisherId = event.publisherId;
         createdAt = event.createdAt;
-        nextResendTime = event.nextResendTime;
+        nextBroadcastTime = event.nextBroadcastTime;
         numberOfAttempts = event.numberOfAttempts;
         subscribers = Map.toArray<Principal, Nat8, Principal>(event.subscribers, func(key, value) = ?key);
       }});

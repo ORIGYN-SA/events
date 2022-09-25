@@ -1,19 +1,23 @@
 import V0_1_0 "./00-01-00-initial";
+import V0_2_0 "./00-02-00-publisher-entities";
 import MigrationTypes "./types";
 
 module {
   let upgrades = [
     V0_1_0.upgrade,
+    V0_2_0.upgrade,
   ];
 
   let downgrades = [
     V0_1_0.downgrade,
+    V0_2_0.downgrade,
   ];
 
   func getMigrationId(state: MigrationTypes.State): Nat {
     return switch (state) {
       case (#v0_0_0(_)) 0;
       case (#v0_1_0(_)) 1;
+      case (#v0_2_0(_)) 2;
     };
   };
 

@@ -16,9 +16,9 @@ shared (deployer) actor class EventSystem() {
 
   stable var migrationState: MigrationTypes.State = #v0_0_0(#data);
 
-  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), {});
+  migrationState := Migrations.migrate(migrationState, #v0_2_0(#id), {});
 
-  let state = switch (migrationState) { case (#v0_1_0(#data(state))) state; case (_) Debug.trap("Unexpected migration state") };
+  let state = switch (migrationState) { case (#v0_2_0(#data(state))) state; case (_) Debug.trap("Unexpected migration state") };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
