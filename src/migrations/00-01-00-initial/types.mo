@@ -1,6 +1,6 @@
 import Candy "mo:candy_0_1_9/types";
-import Map "mo:hashmap_4_0_0/Map";
-import Set "mo:hashmap_4_0_0/Set";
+import Map "mo:map_4_0_0/Map";
+import Set "mo:map_4_0_0/Set";
 
 module {
   public type Subscriber = {
