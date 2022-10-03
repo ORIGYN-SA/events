@@ -15,8 +15,8 @@ sed -i 's/\\r\\n/\r\n/g' ~/.config/dfx/identity/admin/identity.pem
 
 dfx identity use admin
 
-echo "Build event_system canister"
+echo "Build canister"
 
-dfx canister --network local create event_system
-dfx build --network local event_system
+dfx canister --network local create --all
+dfx build --network local --all
 
