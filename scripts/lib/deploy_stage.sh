@@ -18,7 +18,7 @@ DEPLOYER_EXTRA_ARG=$(scripts/didc-linux64 encode "(principal \"${ADMIN_PRINCIPAL
 ${DEPLOYER} \
   -d "${DEPLOYER_WASM}" \
   -w "${WALLET_ID}" \
-  -m ".dfx/local/canisters/event_system/event_system.wasm" \
+  -m ".dfx/local/canisters/drout/drout.wasm" \
   -t "${ACTION}" \
   -C 200000000000 \
   -T "wasm" \
