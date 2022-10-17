@@ -1,4 +1,5 @@
 import Candy "mo:candy_0_1_9/types";
+import CandyUtils "mo:candy_utils_0_2_0/CandyUtils";
 import Map "mo:map_8_0_0_alpha_5/Map";
 import Set "mo:map_8_0_0_alpha_5/Set";
 
@@ -27,6 +28,8 @@ module {
     id: Principal;
     createdAt: Nat64;
     var activeSubscriptions: Nat8;
+    listeners: Set.Set<Principal>;
+    confirmedListeners: Set.Set<Principal>;
     subscriptions: Set.Set<Text>;
   };
 
@@ -38,6 +41,8 @@ module {
     var skipped: Nat8;
     var active: Bool;
     var stopped: Bool;
+    var filter: ?Text;
+    var filterPath: ?CandyUtils.Path;
     var numberOfEvents: Nat64;
     var numberOfNotifications: Nat64;
     var numberOfResendNotifications: Nat64;
@@ -73,6 +78,7 @@ module {
     publications: Map.Map<Text, PublicationGroup>;
     subscribers: Map.Map<Principal, Subscriber>;
     subscriptions: Map.Map<Text, SubscriptionGroup>;
+    confirmedListeners: Map.Map<Principal, Principal>;
     events: Map.Map<Nat, Event>;
   };
 };
