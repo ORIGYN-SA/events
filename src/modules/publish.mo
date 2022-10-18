@@ -1,4 +1,5 @@
 import Candy "mo:candy/types";
+import CandyUtils "mo:candy_utils/CandyUtils";
 import Const "./const";
 import Debug "mo:base/Debug";
 import Map "mo:map/Map";
@@ -12,6 +13,8 @@ module {
   let State = MigrationTypes.Current;
 
   let { get = coalesce } = Option;
+
+  let { get } = CandyUtils;
 
   let { nhash; thash; phash; lhash } = Map;
 
@@ -59,8 +62,8 @@ module {
 
       if (Set.size(publisher.publications) > Const.PUBLICATIONS_LIMIT) Debug.trap("Publications limit reached");
 
-      let publicationGroup = Map.update<Text, Map.Map<Principal, State.Publication>>(publications, thash, eventName, func(key, value) {
-        return coalesce<Map.Map<Principal, State.Publication>>(value, Map.new(phash));
+      let publicationGroup = Map.update<Text, State.PublicationGroup>(publications, thash, eventName, func(key, value) {
+        return coalesce<State.PublicationGroup>(value, Map.new(phash));
       });
 
       let publication = Map.update<Principal, State.Publication>(publicationGroup, phash, caller, func(key, value) = coalesce(value, {
@@ -85,9 +88,9 @@ module {
 
       for (option in options.vals()) switch (option) {
         case (#whitelist(principalIds)) {
-          Set.clear(publication.whitelist);
-
           if (principalIds.size() > Const.WHITELIST_LIMIT) Debug.trap("Whitelist option length limit reached");
+
+          Set.clear(publication.whitelist);
 
           for (principalId in principalIds.vals()) Set.add(publication.whitelist, phash, principalId);
         };
@@ -146,22 +149,31 @@ module {
         let publication = registerPublication(caller, eventName, []);
         let subscriptionGroup = Map.get(subscriptions, thash, eventName)!;
         let eventSubscribers = Map.new<Principal, Nat8>(phash);
-        let subscriberIds = if (Set.size(publication.whitelist) > 0) Set.keys(publication.whitelist) else Map.keys(subscriptionGroup);
+        let subscriberIdsIter = if (Set.size(publication.whitelist) > 0) Set.keys(publication.whitelist) else Map.keys(subscriptionGroup);
 
         publication.numberOfEvents +%= 1;
 
-        for (subscriberId in subscriberIds) ignore do ?{
+        for (subscriberId in subscriberIdsIter) ignore do ?{
           let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
 
-          if (subscription.active) if (subscription.skipped >= subscription.skip) {
-            subscription.skipped := 0;
+          if (subscription.active) {
+            let filterPassed = switch (subscription.filterPath) {
+              case (?filterPath) switch (get(payload, filterPath)) { case (#Bool(bool)) bool; case (_) true };
+              case (_) true;
+            };
 
-            Map.set(eventSubscribers, phash, subscriberId, 0:Nat8);
-            Set.add(subscription.events, nhash, state.eventId);
+            if (filterPassed) {
+              if (subscription.skipped >= subscription.skip) {
+                subscription.skipped := 0;
 
-            subscription.numberOfEvents +%= 1;
-          } else {
-            subscription.skipped +%= 1;
+                Map.set(eventSubscribers, phash, subscriberId, 0:Nat8);
+                Set.add(subscription.events, nhash, state.eventId);
+
+                subscription.numberOfEvents +%= 1;
+              } else {
+                subscription.skipped +%= 1;
+              };
+            };
           };
         };
 

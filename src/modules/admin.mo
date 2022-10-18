@@ -1,5 +1,4 @@
 import Array "mo:base/Array";
-import Cascade "./cascade";
 import Candy "mo:candy/types";
 import Debug "mo:base/Debug";
 import Map "mo:map/Map";
@@ -75,14 +74,10 @@ module {
   public func init(state: State.State, deployer: Principal): {
     fetchSubscribers: (caller: Principal, params: FetchSubscribersParams) -> FetchSubscribersResponse;
     fetchEvents: (caller: Principal, params: FetchEventsParams) -> FetchEventsResponse;
-    removeSubscribers: (caller: Principal, subscriberIds: [Principal]) -> ();
-    removeEvents: (caller: Principal, eventIds: [Nat]) -> ();
     getAdmins: (caller: Principal) -> [Principal];
     addAdmin: (caller: Principal, principalId: Principal) -> ();
     removeAdmin: (caller: Principal, principalId: Principal) -> ();
   } = object {
-    let { removeEventCascade; removeSubscriberCascade } = Cascade.init(state, deployer);
-
     let { admins; subscribers; events } = state;
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -153,20 +148,6 @@ module {
       }});
 
       return { items = sharedEvents; totalCount = filteredEvents.size() };
-    };
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    public func removeSubscribers(caller: Principal, subscriberIds: [Principal]) {
-      if (not isAdmin(caller)) Debug.trap("Not authorized");
-
-      for (subscriberId in subscriberIds.vals()) removeSubscriberCascade(subscriberId);
-    };
-
-    public func removeEvents(caller: Principal, eventIds: [Nat]) {
-      if (not isAdmin(caller)) Debug.trap("Not authorized");
-
-      for (eventId in eventIds.vals()) removeEventCascade(eventId);
     };
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

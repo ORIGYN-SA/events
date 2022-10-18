@@ -42,13 +42,13 @@ module {
       subscriptions = Set.fromIter(PrevSet.keys(subscriber.subscriptions), Map.thash);
     }));
 
-    let subscriptions = Map.new<Text, Map.Map<Principal, Types.Subscription>>(Map.thash);
+    let subscriptions = Map.new<Text, Types.SubscriptionGroup>(Map.thash);
 
     for (subscriber in PrevMap.vals(state.subscribers)) for (eventName in PrevSet.keys(subscriber.subscriptions)) {
       let subscriberId = subscriber.canisterId;
 
-      let subscriptionGroup = Map.update<Text, Map.Map<Principal, Types.Subscription>>(subscriptions, Map.thash, eventName, func(key, value) {
-        return Option.get<Map.Map<Principal, Types.Subscription>>(value, Map.new(Map.phash));
+      let subscriptionGroup = Map.update<Text, Types.SubscriptionGroup>(subscriptions, Map.thash, eventName, func(key, value) {
+        return Option.get<Types.SubscriptionGroup>(value, Map.new(Map.phash));
       });
 
       ignore Map.update<Principal, Types.Subscription>(subscriptionGroup, Map.phash, subscriberId, func(key, value) = Option.get(value, {
