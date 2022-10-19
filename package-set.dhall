@@ -5,6 +5,7 @@
   { name = "map_4_0_0", repo = "https://github.com/ZhenyaUsenko/motoko-hash-map.git", version = "v4.0.0", dependencies = ["base"] },
   { name = "map_8_0_0_alpha_5", repo = "https://github.com/ZhenyaUsenko/motoko-hash-map.git", version = "v8.0.0-alpha.5", dependencies = ["base"] },
   { name = "map", repo = "https://github.com/ZhenyaUsenko/motoko-hash-map.git", version = "v8.0.0-alpha.5", dependencies = ["base"] },
+  { name = "matchers", repo = "https://github.com/kritzcreek/motoko-matchers", version = "v1.2.0", dependencies = ["base"] },
   { name = "candy_utils_0_2_0", repo = "https://github.com/ZhenyaUsenko/motoko-candy-utils.git", version = "v0.2.0", dependencies = ["base"] },
   { name = "candy_utils", repo = "https://github.com/ZhenyaUsenko/motoko-candy-utils.git", version = "v0.2.0", dependencies = ["base"] },
 ]

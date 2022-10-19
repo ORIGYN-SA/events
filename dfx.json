@@ -3,11 +3,32 @@
     "drout": {
       "main": "src/main.mo",
       "type": "motoko"
+    },
+    "test_runner": {
+      "main": "test/test_runner.mo",
+      "type": "motoko",
+      "dependencies": []
+    },
+    "test_publisher": {
+      "main": "test/test_publisher.mo",
+      "type": "motoko",
+      "dependencies": []
     }
   },
   "defaults": {
     "build": {
       "packtool": "vessel sources"
+    },
+    "replica": {
+        "subnet_type": "system"
     }
-  }
+  },
+  "dfx": "0.11.2",
+  "networks": {
+      "local": {
+          "bind": "127.0.0.1:8000",
+          "type": "ephemeral"
+      }
+  },
+  "version": 1
 }

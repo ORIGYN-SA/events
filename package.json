@@ -1,0 +1,23 @@
+{
+  "name": "droute",
+  "version": "0.3.0",
+  "description": "To subscribe to any event canister should:",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "kusanagitest": " watch 'bash kusanagitest.sh' ./testku"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ORIGYN-SA/events.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "watch": "^1.0.2"
+  },
+  "bugs": {
+    "url": "https://github.com/ORIGYN-SA/events/issues"
+  },
+  "homepage": "https://github.com/ORIGYN-SA/events#readme"
+}

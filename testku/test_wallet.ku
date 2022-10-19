@@ -1,0 +1,17 @@
+import D "mo:base/Debug"
+import Principal "mo:base/Principal"
+
+import Publish "../src/modules/publish"
+import Admin "../src/modules/admin"
+import Subscribe "../src/modules/subscribe"
+import Full_Service "../src/main"
+
+shared (deployer) actor class test_wallet()
+
+  public shared func try_registerPublication(target_actor: Principal, eventName: Text, options: Publish.PublicationOptions) : async Bool
+
+    let this_service : Full_Service.EventSystem = actor(Principal.toText(target_actor))
+
+    let result = this_service.registerPublication(eventName, options)
+
+    return true

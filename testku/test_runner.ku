@@ -1,0 +1,58 @@
+import Admin "../src/modules/admin"
+import C "mo:matchers/Canister"
+import M "mo:matchers/Matchers"
+import S "mo:matchers/Suite"
+import T "mo:matchers/Testable"
+
+import D "mo:base/Debug"
+import Principal "mo:base/Principal"
+
+shared (deployer) actor class test_runner(tests : {test_admin : ?Principal; test_publisher : ?Principal})
+
+
+  type test_runner_service = actor{
+    test: () -> async ({#success; #fail : Text})
+  }
+
+  let debug_channel =
+    throws = true
+
+  let it = C.Tester({ batchSize = 8 })
+
+  public shared func test() : async Text
+
+    D.print("tests are " # debug_show(tests))
+
+    //this is annoying, but it is gets around the "not defined bug";
+    switch(tests.test_admin)
+      case(null)
+        D.print("skipping admin tests" # debug_show(tests))
+      case(?test_canister)
+        D.print("running admin tests" # debug_show(test_canister))
+        let TestCanister : test_runner_service = actor(Principal.toText(test_canister));
+        
+        it.should("run admin tests", func () : async C.TestResult = async
+          
+          let result = await TestCanister.test()
+          D.print("result: "  # debug_show(result))
+        
+          return result
+        )
+
+    switch(tests.test_publisher)
+      case(null)
+        D.print("skipping publisher tests" # debug_show(tests))
+      case(?test_canister)
+        D.print("running publisher tests" # debug_show(test_canister))
+        let TestCanister : test_runner_service = actor(Principal.toText(test_canister));
+        
+        it.should("run Publisher tests", func () : async C.TestResult = async
+          
+          let result = await TestCanister.test()
+          D.print("result: "  # debug_show(result))
+        
+          return result
+        )
+
+    D.print("about to run");
+    await it.runAll()

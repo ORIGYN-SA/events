@@ -1,0 +1,48 @@
+import Admin "../src/modules/admin"
+import TestWallet "test_wallet"
+
+import C "mo:matchers/Canister"
+import M "mo:matchers/Matchers"
+import S "mo:matchers/Suite"
+import T "mo:matchers/Testable"
+
+import D "mo:base/Debug"
+import Principal "mo:base/Principal"
+
+shared (deployer) actor class test_admin()
+
+  type test_runner_service = actor{
+    test: () -> async ({#success; #fail : Text})
+  }
+
+  let debug_channel =
+    throws = true
+
+  let it = C.Tester({ batchSize = 8 })
+
+  public shared func test() : async {#success; #fail : Text}
+
+    let suite = S.suite("test nft", [
+      S.test("testFetchSubscribers", switch(await testFetchSubscribers()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true)))
+    ])
+    S.run(suite)
+
+    return #success
+
+  public shared func testFetchSubscribers() : async {#success; #fail : Text}
+  
+    let admin = await TestWallet.test_wallet()
+
+    let x = null
+
+    let suite = S.suite("test locked deposit", [
+      S.test("fail if cant fetch subscribers", switch(x)
+        case(null){"unexpected success"}
+        case(?x)
+          "correct"
+      , M.equals<Text>(T.text("correct number")))
+    ])
+
+    S.run(suite)
+
+    return #success

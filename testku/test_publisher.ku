@@ -1,0 +1,87 @@
+import Admin "../src/modules/admin"
+import TestWallet "test_wallet"
+import Full_Service "../src/main"
+import Sample_Admin "sample_admin"
+
+import C "mo:matchers/Canister"
+import M "mo:matchers/Matchers"
+import S "mo:matchers/Suite"
+import T "mo:matchers/Testable"
+
+import Buffer "mo:base/Buffer"
+import D "mo:base/Debug"
+import Iter "mo:base/Iter"
+import Principal "mo:base/Principal"
+
+import Publish "../src/modules/publish";
+
+import CandyUtils "mo:candy_utils_0_2_0/CandyUtils";
+import Candy "mo:candy_0_1_9/types";
+
+shared (deployer) actor class test_publisher() = this
+
+  type test_runner_service = actor {
+    test: () -> async ({#success; #fail : Text})
+  }
+
+  type event_service = actor {
+    registerPublication : (Text, Publish.PublicationOptions) -> async ()
+    whoami: query () -> async Principal
+  }
+
+  let debug_channel =
+    throws = true
+
+  let it = C.Tester({ batchSize = 8 })
+
+  let handled_events = Buffer.Buffer<Candy.CandyValue>(1)
+
+  public shared (context) func handleEvent(event_id : Nat, canister_id: Principal, event_name : Text, payload : Candy.CandyValue) : async ()
+
+    if(event_name == "com.droute.publication_confirmation")
+      handled_events.add(payload)
+      return
+
+  public shared func test() : async {#success; #fail : Text}
+
+    let suite = S.suite("test publisher", [
+      S.test("testRegisterPublication", switch(await testRegisterPublication()){case(#success){true};case(_){false};}, M.equals<Bool>(T.bool(true)))
+    ])
+    S.run(suite)
+
+    return #success
+
+  public shared func testRegisterPublication() : async {#success; #fail : Text}
+  
+    let admin_service = await Sample_Admin.EventSystem();
+
+    let admin_service_actor : event_service = actor(Principal.toText(Principal.fromActor(admin_service)))
+
+    let future_reg = admin_service_actor.registerPublication("com.test", [#whitelist([Principal.fromActor(this)])])
+
+    var handled_event_count = handled_events.size()
+
+    label waitForResponse for(thisItem in Iter.range(0,10))
+      D.print("waiting on a round sub 2")
+      let result = await admin_service_actor.whoami()
+      if(handled_events.size() > handled_event_count)
+        break waitForResponse
+
+    let suite = S.suite("test locked deposit", [
+      S.test("fail if publication request not confirmed", switch(handled_events.getOpt(0))
+        case(null){"item not found"}
+        case(?x)
+          switch(CandyUtils.get(x, CandyUtils.path("$.eventName")))
+            case(#Text(val))
+              if(val == "com.test")
+                "found com.test"
+              else
+                "wrong event"
+            case(_)
+              "wrong type"
+      , M.equals<Text>(T.text("found com.test")))
+    ])
+
+    S.run(suite)
+
+    return #success
