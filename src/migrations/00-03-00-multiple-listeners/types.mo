@@ -24,6 +24,19 @@ module {
     whitelist: Set.Set<Principal>;
   };
 
+  public type PublicationStable = {
+    eventName: Text;
+    publisherId: Principal;
+    createdAt: Nat64;
+    active: Bool;
+    numberOfEvents: Nat64;
+    numberOfNotifications: Nat64;
+    numberOfResendNotifications: Nat64;
+    numberOfRequestedNotifications: Nat64;
+    numberOfConfirmations: Nat64;
+    whitelist: [Principal];
+  };
+
   public type Subscriber = {
     id: Principal;
     createdAt: Nat64;
@@ -31,6 +44,7 @@ module {
     listeners: Set.Set<Principal>;
     confirmedListeners: Set.Set<Principal>;
     subscriptions: Set.Set<Text>;
+    
   };
 
   public type Subscription = {
@@ -49,6 +63,23 @@ module {
     var numberOfRequestedNotifications: Nat64;
     var numberOfConfirmations: Nat64;
     events: Set.Set<Nat>;
+  };
+
+
+  public type SubscriptionStable = {
+    eventName: Text;
+    subscriberId: Principal;
+    createdAt: Nat64;
+    skip: Nat8;
+    active: Bool;
+    stopped: Bool;
+    filter: ?Text;
+    numberOfEvents: Nat64;
+    numberOfNotifications: Nat64;
+    numberOfResendNotifications: Nat64;
+    numberOfRequestedNotifications: Nat64;
+    numberOfConfirmations: Nat64;
+    events: [Nat];
   };
 
   public type Event = {

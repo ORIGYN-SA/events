@@ -7,6 +7,7 @@ import MigrationTypes "../migrations/types";
 import Option "mo:base/Option";
 import Prim "mo:prim";
 import Principal "mo:base/Principal";
+import Result "mo:base/Result";
 import Set "mo:map/Set";
 
 module {
@@ -22,15 +23,20 @@ module {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  let PublicationOptionsSize = 3;
+  let PublicationOptionsSize = 4;
 
   public type PublicationOptions = [{
     #whitelist: [Principal];
     #whitelistAdd: [Principal];
     #whitelistRemove: [Principal];
+    #confirm: Principal;
   }];
 
   let RemovePublicationOptionsSize = 1;
+
+  public type PublishingActor = actor{
+    registration_response_droute : (Result.Result<State.PublicationStable, Text>) -> ();
+  };
 
   public type RemovePublicationOptions = [{
     #purge;
@@ -108,6 +114,7 @@ module {
 
           for (principalId in principalIds.vals()) Set.delete(publication.whitelist, phash, principalId);
         };
+        case(_){}
       };
 
       return publication;

@@ -6,6 +6,7 @@ import MigrationTypes "../migrations/types";
 import Option "mo:base/Option";
 import Prim "mo:prim";
 import Principal "mo:base/Principal";
+import Result "mo:base/Result";
 import Set "mo:map/Set";
 import State "../migrations/00-01-00-initial/types";
 
@@ -31,6 +32,11 @@ module {
   }];
 
   let SubscriptionOptionsSize = 6;
+
+  public type ListeningActor = actor{
+    subscribe_response_droute : (Result.Result<State.SubscriptionStable, Text>) -> ();
+  };
+
 
   public type SubscriptionOptions = [{
     #stopped: Bool;
@@ -170,6 +176,7 @@ module {
           subscription.filter := filter;
           subscription.filterPath := do ?{ path(filter!) };
         };
+
       };
 
       return subscription;

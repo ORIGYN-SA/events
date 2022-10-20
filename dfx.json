@@ -7,11 +7,13 @@
     "test_runner": {
       "main": "test/test_runner.mo",
       "type": "motoko",
+      "args": "-v --compacting-gc -no-check-ir",
       "dependencies": []
     },
     "test_publisher": {
       "main": "test/test_publisher.mo",
       "type": "motoko",
+      "args": "-v --compacting-gc -no-check-ir",
       "dependencies": []
     }
   },

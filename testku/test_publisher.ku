@@ -12,13 +12,19 @@ import Buffer "mo:base/Buffer"
 import D "mo:base/Debug"
 import Iter "mo:base/Iter"
 import Principal "mo:base/Principal"
+import Result "mo:base/Result"
 
 import Publish "../src/modules/publish";
+import Subscribe "../src/modules/subscribe";
 
 import CandyUtils "mo:candy_utils_0_2_0/CandyUtils";
 import Candy "mo:candy_0_1_9/types";
 
+import MigrationTypes "../src/migrations/types";
+
 shared (deployer) actor class test_publisher() = this
+
+  let State = MigrationTypes.Current
 
   type test_runner_service = actor {
     test: () -> async ({#success; #fail : Text})
@@ -26,6 +32,7 @@ shared (deployer) actor class test_publisher() = this
 
   type event_service = actor {
     registerPublication : (Text, Publish.PublicationOptions) -> async ()
+    subscribe : (Text, Subscribe.SubscriptionOptions) -> async ()
     whoami: query () -> async Principal
   }
 
@@ -35,12 +42,24 @@ shared (deployer) actor class test_publisher() = this
   let it = C.Tester({ batchSize = 8 })
 
   let handled_events = Buffer.Buffer<Candy.CandyValue>(1)
+  let handled_registrations = Buffer.Buffer<Result.Result<State.PublicationStable, Text>>(1)
+  let handled_subscriptions = Buffer.Buffer<Result.Result<State.SubscriptionStable, Text>>(1)
 
   public shared (context) func handleEvent(event_id : Nat, canister_id: Principal, event_name : Text, payload : Candy.CandyValue) : async ()
 
     if(event_name == "com.droute.publication_confirmation")
       handled_events.add(payload)
       return
+
+  public shared (context) func register_publication_response_droute(response : Result.Result<State.PublicationStable, Text>) : async ()
+    D.print("register_publication_response_droute")
+    handled_registrations.add(response)
+    return
+
+  public shared (context) func subscribe_response_droute(response : Result.Result<State.SubscriptionStable, Text>) : async ()
+    handled_subscriptions.add(response)
+    return
+  
 
   public shared func test() : async {#success; #fail : Text}
 
@@ -51,34 +70,40 @@ shared (deployer) actor class test_publisher() = this
 
     return #success
 
+
   public shared func testRegisterPublication() : async {#success; #fail : Text}
   
     let admin_service = await Sample_Admin.EventSystem();
 
     let admin_service_actor : event_service = actor(Principal.toText(Principal.fromActor(admin_service)))
 
-    let future_reg = admin_service_actor.registerPublication("com.test", [#whitelist([Principal.fromActor(this)])])
 
-    var handled_event_count = handled_events.size()
+    D.print("calling register")
+
+    let future_reg = admin_service_actor.registerPublication("com.test", [#whitelist([Principal.fromActor(this)]), #confirm(Principal.fromActor(this))])
+
+    D.print("was called")
+
+    var handled_registration_count = handled_registrations.size()
 
     label waitForResponse for(thisItem in Iter.range(0,10))
       D.print("waiting on a round sub 2")
       let result = await admin_service_actor.whoami()
-      if(handled_events.size() > handled_event_count)
+      if(handled_registrations.size() > handled_registration_count)
         break waitForResponse
 
-    let suite = S.suite("test locked deposit", [
-      S.test("fail if publication request not confirmed", switch(handled_events.getOpt(0))
+    let suite = S.suite("test register publication", [
+      S.test("fail if publication request not confirmed", switch(handled_registrations.getOpt(0))
         case(null){"item not found"}
         case(?x)
-          switch(CandyUtils.get(x, CandyUtils.path("$.eventName")))
-            case(#Text(val))
-              if(val == "com.test")
-                "found com.test"
-              else
-                "wrong event"
-            case(_)
-              "wrong type"
+          matchr(x,
+            if(val.eventName == "com.test")
+              "found com.test"
+            else
+              "wrong event"
+          ,
+            "error: " # err
+          )
       , M.equals<Text>(T.text("found com.test")))
     ])
 

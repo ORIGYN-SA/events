@@ -9,10 +9,13 @@ import Migrations "../src/migrations";
 import Prim "mo:prim";
 import Publish "../src/modules/publish";
 import Stats "../src/modules/stats";
+import Set "mo:map/Set";
 import Subscribe "../src/modules/subscribe";
 
 shared (deployer) actor class EventSystem() = this
   let { time } = Prim
+
+  Debug.print("instantiating the sample admin")
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -39,6 +42,7 @@ shared (deployer) actor class EventSystem() = this
   let handled_events = Buffer.Buffer<Candy.CandyValue>(1);
 
   public shared (context) func handleEvent(event_id : Nat, canister_id: Principal, event_name : Text, payload : Candy.CandyValue) : async ()
+    Debug.print("got an event on sample admin")
     if(event_name == "com.droute.publication_confirmation")
       handled_events.add(payload)
       return
@@ -49,12 +53,29 @@ shared (deployer) actor class EventSystem() = this
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public shared (context) func registerPublication(eventName: Text, options: Publish.PublicationOptions): async ()
+    
+    Debug.print("in register")
+    
     let registration = PublishModule.registerPublication(context.caller, eventName, options)
 
-    PublishModule.publish(Principal.fromActor(this), "com.droute.publication_confirmation", #Class([
-      {name="caller"; value=#Principal(Principal.fromActor(this)); immutable=true;}
-      {name="eventName"; value=#Text(registration.eventName); immutable=true;}
-    ]))
+    Debug.print("handled a registerPublication" # debug_show(registration))
+
+    for(option in options.vals()) 
+      switch(option)
+        case(#confirm(toNotify))
+          let callingActor : Publish.PublishingActor = actor(Principal.toText(toNotify));
+          callingActor.registration_response_droute(#ok({
+            eventName = registration.eventName
+            publisherId = registration.publisherId
+            createdAt = registration.createdAt
+            active = registration.active
+            numberOfEvents = registration.numberOfEvents
+            numberOfNotifications = registration.numberOfNotifications
+            numberOfResendNotifications = registration.numberOfResendNotifications
+            numberOfRequestedNotifications = registration.numberOfRequestedNotifications
+            numberOfConfirmations = registration.numberOfConfirmations
+            whitelist = Set.toArray<Principal, Principal>(registration.whitelist, func(x){?x})}))
+        case(_){}
     return
 
   public shared (context) func removePublication(eventName: Text, options: Publish.RemovePublicationOptions): async () {
@@ -71,9 +92,28 @@ shared (deployer) actor class EventSystem() = this
     ignore SubscribeModule.registerSubscriber(context.caller, options);
   };
 
-  public shared (context) func subscribe(eventName: Text, options: Subscribe.SubscriptionOptions): async () {
-    ignore SubscribeModule.subscribe(context.caller, eventName, options);
-  };
+  public shared (context) func subscribe(eventName: Text, options: Subscribe.SubscriptionOptions): async () 
+    let subscription = SubscribeModule.subscribe(context.caller, eventName, options)
+
+    for(option in options.vals()) 
+      switch(option)
+        case(#confirm(toNotify))
+          let callingActor : Subscribe.ListeningActor = actor(Principal.toText(toNotify));
+          callingActor.subscribe_response_droute(#ok({
+            eventName = subscription.eventName
+            subscriberId = subscription.subscriberId
+            createdAt = subscription.createdAt
+            skip = subscription.skip
+            active = subscription.active
+            stopped = subscription.stopped
+            filter = subscription.filter
+            numberOfEvents = subscription.numberOfEvents
+            numberOfNotifications = subscription.numberOfNotifications
+            numberOfResendNotifications = subscription.numberOfResendNotifications
+            numberOfRequestedNotifications = subscription.numberOfRequestedNotifications
+            numberOfConfirmations = subscription.numberOfConfirmations
+            events = Set.toArray<Nat, Nat>(subscription.events, func(x){?x})}))
+        case(_){}
 
   public shared (context) func unsubscribe(eventName: Text, options: Subscribe.UnsubscribeOptions): async () {
     SubscribeModule.unsubscribe(context.caller, eventName, options);
