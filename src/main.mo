@@ -48,7 +48,7 @@ shared (deployer) actor class EventSystem() {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func registerSubscriber(caller: Principal, options: Subscribe.SubscriberOptions): async () {
+  public shared (context) func registerSubscriber(options: Subscribe.SubscriberOptions): async () {
     ignore SubscribeModule.registerSubscriber(context.caller, options);
   };
 
@@ -64,7 +64,7 @@ shared (deployer) actor class EventSystem() {
     SubscribeModule.requestMissedEvents(context.caller, eventName, options);
   };
 
-  public shared (context) func confirmListener(subscriberId: Principal, allow: Bool) {
+  public shared (context) func confirmListener(subscriberId: Principal, allow: Bool): async () {
     SubscribeModule.confirmListener(context.caller, subscriberId, allow);
   };
 
@@ -74,11 +74,11 @@ shared (deployer) actor class EventSystem() {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func getPublicationStats(options: Stats.StatsOptions): async Stats.Stats {
+  public query (context) func getPublicationStats(options: Stats.StatsOptions): async Stats.Stats {
     StatsModule.getPublicationStats(context.caller, options);
   };
 
-  public shared (context) func getSubscriptionStats(options: Stats.StatsOptions): async Stats.Stats {
+  public query (context) func getSubscriptionStats(options: Stats.StatsOptions): async Stats.Stats {
     StatsModule.getSubscriptionStats(context.caller, options);
   };
 

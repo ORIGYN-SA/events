@@ -1,3 +1,4 @@
+import Const "./const";
 import Debug "mo:base/Debug";
 import Map "mo:map/Map";
 import MigrationTypes "../migrations/types";
@@ -54,7 +55,12 @@ module {
 
         for (option in options.vals()) switch (option) {
           case (#active(active)) activeFilter := ?active;
-          case (#eventNames(eventNames)) eventNamesIter := eventNames.vals();
+
+          case (#eventNames(eventNames)) {
+            if (eventNames.size() > Const.PUBLICATIONS_LIMIT) Debug.trap("EventNames option length limit reached");
+
+            eventNamesIter := eventNames.vals();
+          };
         };
 
         for (eventName in eventNamesIter) ignore do ?{
@@ -98,7 +104,12 @@ module {
 
         for (option in options.vals()) switch (option) {
           case (#active(active)) activeFilter := ?active;
-          case (#eventNames(eventNames)) eventNamesIter := eventNames.vals();
+
+          case (#eventNames(eventNames)) {
+            if (eventNames.size() > Const.SUBSCRIPTIONS_LIMIT) Debug.trap("EventNames option length limit reached");
+
+            eventNamesIter := eventNames.vals();
+          };
         };
 
         for (eventName in eventNamesIter) ignore do ?{

@@ -22,7 +22,7 @@ module {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  let SubscriberOptionsSize = 6;
+  let SubscriberOptionsSize = 3;
 
   public type SubscriberOptions = [{
     #listeners: [Principal];
@@ -30,7 +30,7 @@ module {
     #listenersRemove: [Principal];
   }];
 
-  let SubscriptionOptionsSize = 6;
+  let SubscriptionOptionsSize = 3;
 
   public type SubscriptionOptions = [{
     #stopped: Bool;
