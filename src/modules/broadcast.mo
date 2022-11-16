@@ -1,10 +1,10 @@
-import Candy "mo:candy/types";
 import Const "./const";
 import Map "mo:map/Map";
 import MigrationTypes "../migrations/types";
 import Prim "mo:prim";
 import Principal "mo:base/Principal";
 import Set "mo:map/Set";
+import Types "./types";
 import Utils "../utils/misc";
 
 module {
@@ -15,12 +15,6 @@ module {
   let { nhash; thash; phash; lhash } = Map;
 
   let { time } = Prim;
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public type ListenerActor = actor {
-    handleEvent: (eventId: Nat, publisherId: Principal, eventName: Text, payload: Candy.CandyValue) -> ();
-  };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -47,7 +41,7 @@ module {
               if (subscription.active and not subscription.stopped) {
                 let subscriber = Map.get(subscribers, phash, subscriberId)!;
                 let listenerId = Set.popFront(subscriber.confirmedListeners)!;
-                let listenerActor = actor(Principal.toText(listenerId)):ListenerActor;
+                let listenerActor = actor(Principal.toText(listenerId)):Types.ListenerActor;
 
                 Set.add(subscriber.confirmedListeners, phash, listenerId);
                 Set.delete(event.resendRequests, phash, subscriberId);
@@ -105,7 +99,7 @@ module {
             let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
             let subscriber = Map.get(subscribers, phash, subscriberId)!;
             let listenerId = Set.popFront(subscriber.confirmedListeners)!;
-            let listenerActor = actor(Principal.toText(listenerId)):ListenerActor;
+            let listenerActor = actor(Principal.toText(listenerId)):Types.ListenerActor;
 
             Set.add(subscriber.confirmedListeners, phash, listenerId);
 

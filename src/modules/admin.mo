@@ -1,10 +1,12 @@
 import Array "mo:base/Array";
 import Candy "mo:candy/types";
 import Debug "mo:base/Debug";
+import Errors "./errors";
 import Map "mo:map/Map";
 import MigrationTypes "../migrations/types";
 import Option "mo:base/Option";
 import Set "mo:map/Set";
+import Types "./types";
 import Utils "../utils/misc";
 
 module {
@@ -18,27 +20,7 @@ module {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  type SharedSubscriber = {
-    subscriberId: Principal;
-    createdAt: Nat64;
-    activeSubscriptions: Nat8;
-    subscriptions: [Text];
-  };
-
-  type SharedEvent = {
-    eventId: Nat;
-    eventName: Text;
-    payload: Candy.CandyValue;
-    publisherId: Principal;
-    createdAt: Nat64;
-    nextBroadcastTime: Nat64;
-    numberOfAttempts: Nat8;
-    subscribers: [Principal];
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public type FetchSubscribersParams = {
+  public type FetchSubscribersOptions = {
     limit: Nat;
     offset: ?Nat;
     filters: ?{
@@ -48,13 +30,13 @@ module {
   };
 
   public type FetchSubscribersResponse = {
-    items: [SharedSubscriber];
+    items: [Types.SharedSubscriber];
     totalCount: Nat;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public type FetchEventsParams = {
+  public type FetchEventsOptions = {
     limit: Nat;
     offset: ?Nat;
     filters: ?{
@@ -65,15 +47,15 @@ module {
   };
 
   public type FetchEventsResponse = {
-    items: [SharedEvent];
+    items: [Types.SharedEvent];
     totalCount: Nat;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public func init(state: State.State, deployer: Principal): {
-    fetchSubscribers: (caller: Principal, params: FetchSubscribersParams) -> FetchSubscribersResponse;
-    fetchEvents: (caller: Principal, params: FetchEventsParams) -> FetchEventsResponse;
+    fetchSubscribers: (caller: Principal, options: FetchSubscribersOptions) -> FetchSubscribersResponse;
+    fetchEvents: (caller: Principal, options: FetchEventsOptions) -> FetchEventsResponse;
     getAdmins: (caller: Principal) -> [Principal];
     addAdmin: (caller: Principal, principalId: Principal) -> ();
     removeAdmin: (caller: Principal, principalId: Principal) -> ();
@@ -88,13 +70,13 @@ module {
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public func fetchSubscribers(caller: Principal, params: FetchSubscribersParams): FetchSubscribersResponse {
-      if (not isAdmin(caller)) Debug.trap("Not authorized");
+    public func fetchSubscribers(caller: Principal, options: FetchSubscribersOptions): FetchSubscribersResponse {
+      if (not isAdmin(caller)) Debug.trap(Errors.PERMISSION_DENIED);
 
-      let subscriberId = do ?{ Set.fromIter(params.filters!.subscriberId!.vals(), phash) };
-      let subscriptions = do ?{ Set.fromIter(params.filters!.subscriptions!.vals(), thash) };
+      let subscriberId = do ?{ Set.fromIter(options.filters!.subscriberId!.vals(), phash) };
+      let subscriptions = do ?{ Set.fromIter(options.filters!.subscriptions!.vals(), thash) };
 
-      let subscribersArray = Map.toArray<Principal, State.Subscriber, State.Subscriber>(subscribers, func(key, value) = ?value);
+      let subscribersArray = Map.toArrayMap<Principal, State.Subscriber, State.Subscriber>(subscribers, func(key, value) = ?value);
 
       let filteredSubscribers = Array.filter(subscribersArray, func(subscriber: State.Subscriber): Bool {
         ignore do ?{ if (not Set.has(subscriberId!, phash, subscriber.id)) return false };
@@ -103,28 +85,30 @@ module {
         return true;
       });
 
-      let limitedSubscribers = arraySlice(filteredSubscribers, params.offset, ?(coalesce(params.offset, 0) + params.limit));
+      let limitedSubscribers = arraySlice(filteredSubscribers, options.offset, ?(coalesce(options.offset, 0) + options.limit));
 
-      let sharedSubscribers = Array.map(limitedSubscribers, func(subscriber: State.Subscriber): SharedSubscriber {{
-        subscriberId = subscriber.id;
+      let sharedSubscribers = Array.map(limitedSubscribers, func(subscriber: State.Subscriber): Types.SharedSubscriber = {
+        id = subscriber.id;
         createdAt = subscriber.createdAt;
         activeSubscriptions = subscriber.activeSubscriptions;
-        subscriptions = Set.toArray<Text, Text>(subscriber.subscriptions, func(key) = ?key);
-      }});
+        listeners = Set.toArray(subscriber.listeners);
+        confirmedListeners = Set.toArray(subscriber.confirmedListeners);
+        subscriptions = Set.toArray(subscriber.subscriptions);
+      });
 
       return { items = sharedSubscribers; totalCount = filteredSubscribers.size() };
     };
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public func fetchEvents(caller: Principal, params: FetchEventsParams): FetchEventsResponse {
-      if (not isAdmin(caller)) Debug.trap("Not authorized");
+    public func fetchEvents(caller: Principal, options: FetchEventsOptions): FetchEventsResponse {
+      if (not isAdmin(caller)) Debug.trap(Errors.PERMISSION_DENIED);
 
-      let eventId = do ?{ Set.fromIter(params.filters!.eventId!.vals(), nhash) };
-      let eventName = do ?{ Set.fromIter(params.filters!.eventName!.vals(), thash) };
-      let publisherId = do ?{ Set.fromIter(params.filters!.publisherId!.vals(), phash) };
+      let eventId = do ?{ Set.fromIter(options.filters!.eventId!.vals(), nhash) };
+      let eventName = do ?{ Set.fromIter(options.filters!.eventName!.vals(), thash) };
+      let publisherId = do ?{ Set.fromIter(options.filters!.publisherId!.vals(), phash) };
 
-      let eventsArray = Map.toArray<Nat, State.Event, State.Event>(events, func(key, value) = ?value);
+      let eventsArray = Map.toArrayMap<Nat, State.Event, State.Event>(events, func(key, value) = ?value);
 
       let filteredEvents = Array.filter(eventsArray, func(event: State.Event): Bool {
         ignore do ?{ if (not Set.has(eventId!, nhash, event.id)) return false };
@@ -134,18 +118,17 @@ module {
         return true;
       });
 
-      let limitedEvents = arraySlice(filteredEvents, params.offset, ?(coalesce(params.offset, 0) + params.limit));
+      let limitedEvents = arraySlice(filteredEvents, options.offset, ?(coalesce(options.offset, 0) + options.limit));
 
-      let sharedEvents = Array.map(limitedEvents, func(event: State.Event): SharedEvent {{
-        eventId = event.id;
+      let sharedEvents = Array.map(limitedEvents, func(event: State.Event): Types.SharedEvent = {
+        id = event.id;
         eventName = event.eventName;
-        payload = event.payload;
         publisherId = event.publisherId;
+        payload = event.payload;
         createdAt = event.createdAt;
         nextBroadcastTime = event.nextBroadcastTime;
         numberOfAttempts = event.numberOfAttempts;
-        subscribers = Map.toArray<Principal, Nat8, Principal>(event.subscribers, func(key, value) = ?key);
-      }});
+      });
 
       return { items = sharedEvents; totalCount = filteredEvents.size() };
     };
@@ -153,19 +136,19 @@ module {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     public func getAdmins(caller: Principal): [Principal] {
-      if (not isAdmin(caller)) Debug.trap("Not authorized");
+      if (not isAdmin(caller)) Debug.trap(Errors.PERMISSION_DENIED);
 
-      return Set.toArray<Principal, Principal>(admins, func(key) = ?key);
+      return Set.toArray(admins);
     };
 
     public func addAdmin(caller: Principal, principalId: Principal) {
-      if (not isAdmin(caller)) Debug.trap("Not authorized");
+      if (not isAdmin(caller)) Debug.trap(Errors.PERMISSION_DENIED);
 
       Set.add(admins, phash, principalId);
     };
 
     public func removeAdmin(caller: Principal, principalId: Principal) {
-      if (not isAdmin(caller)) Debug.trap("Not authorized");
+      if (not isAdmin(caller)) Debug.trap(Errors.PERMISSION_DENIED);
 
       Set.delete(admins, phash, principalId);
     };
