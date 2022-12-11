@@ -2,12 +2,16 @@ import Candy "mo:candy/types";
 import CandyUtils "mo:candy_utils/CandyUtils";
 import Const "./const";
 import Debug "mo:base/Debug";
+import Errors "./errors";
+import Info "./info";
 import Map "mo:map/Map";
 import MigrationTypes "../migrations/types";
 import Option "mo:base/Option";
 import Prim "mo:prim";
 import Principal "mo:base/Principal";
 import Set "mo:map/Set";
+import Types "./types";
+import Utils "../utils/misc";
 
 module {
   let State = MigrationTypes.Current;
@@ -16,40 +20,65 @@ module {
 
   let { get } = CandyUtils;
 
+  let { unwrap } = Utils;
+
   let { nhash; thash; phash; lhash } = Map;
 
   let { time } = Prim;
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  let PublicationOptionsSize = 3;
+  public type PublicationOptions = {
+    whitelist: ?[Principal];
+    whitelistAdd: ?[Principal];
+    whitelistRemove: ?[Principal];
+    includeWhitelist: ?Bool;
+  };
 
-  public type PublicationOptions = [{
-    #whitelist: [Principal];
-    #whitelistAdd: [Principal];
-    #whitelistRemove: [Principal];
-  }];
+  public type PublicationInfo = {
+    publicationInfo: Types.SharedPublication;
+    prevPublicationInfo: ?Types.SharedPublication;
+  };
 
-  let RemovePublicationOptionsSize = 1;
+  public type PublicationResponse = {
+    publication: State.Publication;
+    publicationInfo: Types.SharedPublication;
+    prevPublicationInfo: ?Types.SharedPublication;
+  };
 
-  public type RemovePublicationOptions = [{
-    #purge;
-  }];
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public type RemovePublicationOptions = {
+    purge: ?Bool;
+    includeWhitelist: ?Bool;
+  };
+
+  public type RemovePublicationResponse = {
+    publicationInfo: ?Types.SharedPublication;
+    prevPublicationInfo: ?Types.SharedPublication;
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public type PublishResponse = {
+    eventInfo: ?Types.SharedEvent;
+  };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public func init(state: State.State, deployer: Principal): {
-    registerPublication: (caller: Principal, eventName: Text, options: PublicationOptions) -> State.Publication;
-    removePublication: (caller: Principal, eventName: Text, options: RemovePublicationOptions) -> ();
-    publish: (caller: Principal, eventName: Text, payload: Candy.CandyValue) -> ();
+    registerPublication: (caller: Principal, eventName: Text, options: ?PublicationOptions) -> PublicationResponse;
+    removePublication: (caller: Principal, eventName: Text, options: ?RemovePublicationOptions) -> RemovePublicationResponse;
+    publish: (caller: Principal, eventName: Text, payload: Candy.CandyValue) -> PublishResponse;
   } = object {
     let { publishers; publications; subscribers; subscriptions; events } = state;
 
+    let InfoModule = Info.init(state, deployer);
+
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public func registerPublication(caller: Principal, eventName: Text, options: PublicationOptions): State.Publication {
-      if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap("Event name length limit reached");
-      if (options.size() > PublicationOptionsSize) Debug.trap("Invalid number of options");
+    public func registerPublication(caller: Principal, eventName: Text, options: ?PublicationOptions): PublicationResponse {
+      let prevPublicationInfo = InfoModule.getPublicationInfo(caller, eventName, options);
 
       let publisher = Map.update<Principal, State.Publisher>(publishers, phash, caller, func(key, value) = coalesce(value, {
         id = caller;
@@ -60,7 +89,7 @@ module {
 
       Set.add(publisher.publications, thash, eventName);
 
-      if (Set.size(publisher.publications) > Const.PUBLICATIONS_LIMIT) Debug.trap("Publications limit reached");
+      if (Set.size(publisher.publications) > Const.PUBLICATIONS_LIMIT) Debug.trap(Errors.PUBLICATIONS_LENGTH);
 
       let publicationGroup = Map.update<Text, State.PublicationGroup>(publications, thash, eventName, func(key, value) {
         return coalesce<State.PublicationGroup>(value, Map.new(phash));
@@ -83,41 +112,42 @@ module {
         publication.active := true;
         publisher.activePublications +%= 1;
 
-        if (publisher.activePublications > Const.ACTIVE_PUBLICATIONS_LIMIT) Debug.trap("Active publications limit reached");
+        if (publisher.activePublications > Const.ACTIVE_PUBLICATIONS_LIMIT) Debug.trap(Errors.ACTIVE_PUBLICATIONS_LENGTH);
       };
 
-      for (option in options.vals()) switch (option) {
-        case (#whitelist(principalIds)) {
-          if (principalIds.size() > Const.WHITELIST_LIMIT) Debug.trap("Whitelist option length limit reached");
+      ignore do ?{
+        if (options!.whitelist!.size() > Const.WHITELIST_LIMIT) Debug.trap(Errors.WHITELIST_REPLACE_LENGTH);
 
-          Set.clear(publication.whitelist);
+        Set.clear(publication.whitelist);
 
-          for (principalId in principalIds.vals()) Set.add(publication.whitelist, phash, principalId);
-        };
-
-        case (#whitelistAdd(principalIds)) {
-          if (principalIds.size() > Const.WHITELIST_LIMIT) Debug.trap("WhitelistAdd option length limit reached");
-
-          for (principalId in principalIds.vals()) Set.add(publication.whitelist, phash, principalId);
-
-          if (Set.size(publication.whitelist) > Const.WHITELIST_LIMIT) Debug.trap("Whitelist length limit reached");
-        };
-
-        case (#whitelistRemove(principalIds)) {
-          if (principalIds.size() > Const.WHITELIST_LIMIT) Debug.trap("WhitelistRemove option length limit reached");
-
-          for (principalId in principalIds.vals()) Set.delete(publication.whitelist, phash, principalId);
-        };
+        for (principalId in options!.whitelist!.vals()) Set.add(publication.whitelist, phash, principalId);
       };
 
-      return publication;
+      ignore do ?{
+        if (options!.whitelistAdd!.size() > Const.WHITELIST_LIMIT) Debug.trap(Errors.WHITELIST_ADD_LENGTH);
+
+        for (principalId in options!.whitelistAdd!.vals()) Set.add(publication.whitelist, phash, principalId);
+
+        if (Set.size(publication.whitelist) > Const.WHITELIST_LIMIT) Debug.trap(Errors.WHITELIST_LENGTH);
+      };
+
+      ignore do ?{
+        if (options!.whitelistRemove!.size() > Const.WHITELIST_LIMIT) Debug.trap(Errors.WHITELIST_REMOVE_LENGTH);
+
+        for (principalId in options!.whitelistRemove!.vals()) Set.delete(publication.whitelist, phash, principalId);
+      };
+
+      let publicationInfo = unwrap(InfoModule.getPublicationInfo(caller, eventName, options));
+
+      return { publication; publicationInfo; prevPublicationInfo };
     };
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public func removePublication(caller: Principal, eventName: Text, options: RemovePublicationOptions) {
-      if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap("Event name length limit reached");
-      if (options.size() > RemovePublicationOptionsSize) Debug.trap("Invalid number of options");
+    public func removePublication(caller: Principal, eventName: Text, options: ?RemovePublicationOptions): RemovePublicationResponse {
+      if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
+
+      let prevPublicationInfo = InfoModule.getPublicationInfo(caller, eventName, options);
 
       ignore do ?{
         let publisher = Map.get(publishers, phash, caller)!;
@@ -129,45 +159,48 @@ module {
           publisher.activePublications -%= 1;
         };
 
-        for (option in options.vals()) switch (option) {
-          case (#purge) {
-            Set.delete(publisher.publications, thash, eventName);
-            Map.delete(publicationGroup, phash, caller);
+        if (options!.purge!) {
+          Set.delete(publisher.publications, thash, eventName);
+          Map.delete(publicationGroup, phash, caller);
 
-            if (Map.size(publicationGroup) == 0) Map.delete(publications, thash, eventName);
-          };
+          if (Map.size(publicationGroup) == 0) Map.delete(publications, thash, eventName);
         };
       };
+
+      let publicationInfo = InfoModule.getPublicationInfo(caller, eventName, options);
+
+      return { publicationInfo; prevPublicationInfo };
     };
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public func publish(caller: Principal, eventName: Text, payload: Candy.CandyValue) {
-      if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap("Event name length limit reached");
+    public func publish(caller: Principal, eventName: Text, payload: Candy.CandyValue): PublishResponse {
+      if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
+
+      let eventId = state.eventId;
+
+      let { publication } = registerPublication(caller, eventName, null);
+
+      publication.numberOfEvents +%= 1;
 
       ignore do ?{
-        let publication = registerPublication(caller, eventName, []);
         let subscriptionGroup = Map.get(subscriptions, thash, eventName)!;
         let eventSubscribers = Map.new<Principal, Nat8>(phash);
-        let subscriberIdsIter = if (Set.size(publication.whitelist) > 0) Set.keys(publication.whitelist) else Map.keys(subscriptionGroup);
 
-        publication.numberOfEvents +%= 1;
+        let subscriberIdsIter = if (Set.size(publication.whitelist) > 0) Set.keys(publication.whitelist) else Map.keys(subscriptionGroup);
 
         for (subscriberId in subscriberIdsIter) ignore do ?{
           let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
 
           if (subscription.active) {
-            let filterPassed = switch (subscription.filterPath) {
-              case (?filterPath) switch (get(payload, filterPath)) { case (#Bool(bool)) bool; case (_) true };
-              case (_) true;
-            };
+            let filterValue = do ?{ get(payload, subscription.filterPath!) };
 
-            if (filterPassed) {
+            if (filterValue != ?#Bool(false)) {
               if (subscription.skipped >= subscription.skip) {
                 subscription.skipped := 0;
 
                 Map.set(eventSubscribers, phash, subscriberId, 0:Nat8);
-                Set.add(subscription.events, nhash, state.eventId);
+                Set.add(subscription.events, nhash, eventId);
 
                 subscription.numberOfEvents +%= 1;
               } else {
@@ -178,8 +211,8 @@ module {
         };
 
         if (Map.size(eventSubscribers) > 0) {
-          Map.set(events, nhash, state.eventId, {
-            id = state.eventId;
+          Map.set(events, nhash, eventId, {
+            id = eventId;
             eventName = eventName;
             publisherId = caller;
             payload = payload;
@@ -195,6 +228,8 @@ module {
           state.nextBroadcastTime := time();
         };
       };
+
+      return { eventInfo = InfoModule.getEventInfo(caller, eventId) };
     };
   };
 };
