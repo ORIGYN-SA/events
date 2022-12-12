@@ -1,8 +1,26 @@
 import Candy "mo:candy/types";
+import MigrationTypes "../migrations/types";
 
 module {
+  let State = MigrationTypes.Current;
+
   public type ListenerActor = actor {
     handleEvent: (eventId: Nat, publisherId: Principal, eventName: Text, payload: Candy.CandyValue) -> ();
+  };
+
+  public type SharedCanister = {
+    canisterId: Principal;
+    canisterType: State.CanisterType;
+    heapSize: Nat;
+    balance: Nat;
+  };
+
+  public type SharedStats = {
+    numberOfEvents: Nat64;
+    numberOfNotifications: Nat64;
+    numberOfResendNotifications: Nat64;
+    numberOfRequestedNotifications: Nat64;
+    numberOfConfirmations: Nat64;
   };
 
   public type SharedPublisher = {
@@ -16,12 +34,8 @@ module {
     eventName: Text;
     publisherId: Principal;
     createdAt: Nat64;
+    stats: SharedStats;
     active: Bool;
-    numberOfEvents: Nat64;
-    numberOfNotifications: Nat64;
-    numberOfResendNotifications: Nat64;
-    numberOfRequestedNotifications: Nat64;
-    numberOfConfirmations: Nat64;
     whitelist: [Principal];
   };
 
@@ -38,16 +52,11 @@ module {
     eventName: Text;
     subscriberId: Principal;
     createdAt: Nat64;
-    skip: Nat8;
-    skipped: Nat8;
+    stats: SharedStats;
+    rate: Nat8;
     active: Bool;
     stopped: Bool;
     filter: ?Text;
-    numberOfEvents: Nat64;
-    numberOfNotifications: Nat64;
-    numberOfResendNotifications: Nat64;
-    numberOfRequestedNotifications: Nat64;
-    numberOfConfirmations: Nat64;
   };
 
   public type SharedEvent = {

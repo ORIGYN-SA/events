@@ -1,17 +1,18 @@
 import Candy "mo:candy/types";
 import CandyUtils "mo:candy_utils/CandyUtils";
-import Const "./const";
+import Const "../../../common/const";
 import Debug "mo:base/Debug";
-import Errors "./errors";
-import Info "./info";
+import Errors "../../../common/errors";
+import Inform "./inform";
 import Map "mo:map/Map";
-import MigrationTypes "../migrations/types";
+import MigrationTypes "../../../migrations/types";
 import Option "mo:base/Option";
 import Prim "mo:prim";
 import Principal "mo:base/Principal";
 import Set "mo:map/Set";
-import Types "./types";
-import Utils "../utils/misc";
+import Stats "../../../common/stats";
+import Types "../../../common/types";
+import Utils "../../../utils/misc";
 
 module {
   let State = MigrationTypes.Current;
@@ -60,28 +61,23 @@ module {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public type PublishResponse = {
-    eventInfo: ?Types.SharedEvent;
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public func init(state: State.State, deployer: Principal): {
-    registerPublication: (caller: Principal, eventName: Text, options: ?PublicationOptions) -> PublicationResponse;
-    removePublication: (caller: Principal, eventName: Text, options: ?RemovePublicationOptions) -> RemovePublicationResponse;
-    publish: (caller: Principal, eventName: Text, payload: Candy.CandyValue) -> PublishResponse;
+  public func init(state: State.PublishersStoreState, deployer: Principal): {
+    registerPublication: (caller: Principal, publisherId: Principal, eventName: Text, options: ?PublicationOptions) -> PublicationResponse;
+    removePublication: (caller: Principal, publisherId: Principal, eventName: Text, options: ?RemovePublicationOptions) -> RemovePublicationResponse;
   } = object {
-    let { publishers; publications; subscribers; subscriptions; events } = state;
+    let { publishers; publications } = state;
 
-    let InfoModule = Info.init(state, deployer);
+    let InformModule = Inform.init(state, deployer);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public func registerPublication(caller: Principal, eventName: Text, options: ?PublicationOptions): PublicationResponse {
-      let prevPublicationInfo = InfoModule.getPublicationInfo(caller, eventName, options);
+    public func registerPublication(caller: Principal, publisherId: Principal, eventName: Text, options: ?PublicationOptions): PublicationResponse {
+      if (caller != deployer) Debug.trap(Errors.PERMISSION_DENIED);
 
-      let publisher = Map.update<Principal, State.Publisher>(publishers, phash, caller, func(key, value) = coalesce(value, {
-        id = caller;
+      let prevPublicationInfo = InformModule.getPublicationInfo(caller, publisherId, eventName, options);
+
+      let publisher = Map.update<Principal, State.Publisher>(publishers, phash, publisherId, func(key, value) = coalesce(value, {
+        id = publisherId;
         createdAt = time();
         var activePublications = 0:Nat8;
         publications = Set.new(thash);
@@ -95,16 +91,12 @@ module {
         return coalesce<State.PublicationGroup>(value, Map.new(phash));
       });
 
-      let publication = Map.update<Principal, State.Publication>(publicationGroup, phash, caller, func(key, value) = coalesce(value, {
+      let publication = Map.update<Principal, State.Publication>(publicationGroup, phash, publisherId, func(key, value) = coalesce(value, {
         eventName = eventName;
-        publisherId = caller;
+        publisherId = publisherId;
         createdAt = time();
+        stats = Stats.defaultStats();
         var active = false;
-        var numberOfEvents = 0:Nat64;
-        var numberOfNotifications = 0:Nat64;
-        var numberOfResendNotifications = 0:Nat64;
-        var numberOfRequestedNotifications = 0:Nat64;
-        var numberOfConfirmations = 0:Nat64;
         whitelist = Set.new(phash);
       }));
 
@@ -137,22 +129,24 @@ module {
         for (principalId in options!.whitelistRemove!.vals()) Set.delete(publication.whitelist, phash, principalId);
       };
 
-      let publicationInfo = unwrap(InfoModule.getPublicationInfo(caller, eventName, options));
+      let publicationInfo = unwrap(InformModule.getPublicationInfo(caller, publisherId, eventName, options));
 
       return { publication; publicationInfo; prevPublicationInfo };
     };
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public func removePublication(caller: Principal, eventName: Text, options: ?RemovePublicationOptions): RemovePublicationResponse {
+    public func removePublication(caller: Principal, publisherId: Principal, eventName: Text, options: ?RemovePublicationOptions): RemovePublicationResponse {
+      if (caller != deployer) Debug.trap(Errors.PERMISSION_DENIED);
+
       if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
 
-      let prevPublicationInfo = InfoModule.getPublicationInfo(caller, eventName, options);
+      let prevPublicationInfo = InformModule.getPublicationInfo(caller, publisherId, eventName, options);
 
       ignore do ?{
-        let publisher = Map.get(publishers, phash, caller)!;
+        let publisher = Map.get(publishers, phash, publisherId)!;
         let publicationGroup = Map.get(publications, thash, eventName)!;
-        let publication = Map.get(publicationGroup, phash, caller)!;
+        let publication = Map.get(publicationGroup, phash, publisherId)!;
 
         if (publication.active) {
           publication.active := false;
@@ -161,75 +155,15 @@ module {
 
         if (options!.purge!) {
           Set.delete(publisher.publications, thash, eventName);
-          Map.delete(publicationGroup, phash, caller);
+          Map.delete(publicationGroup, phash, publisherId);
 
           if (Map.size(publicationGroup) == 0) Map.delete(publications, thash, eventName);
         };
       };
 
-      let publicationInfo = InfoModule.getPublicationInfo(caller, eventName, options);
+      let publicationInfo = InformModule.getPublicationInfo(caller, publisherId, eventName, options);
 
       return { publicationInfo; prevPublicationInfo };
-    };
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    public func publish(caller: Principal, eventName: Text, payload: Candy.CandyValue): PublishResponse {
-      if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
-
-      let eventId = state.eventId;
-
-      let { publication } = registerPublication(caller, eventName, null);
-
-      publication.numberOfEvents +%= 1;
-
-      ignore do ?{
-        let subscriptionGroup = Map.get(subscriptions, thash, eventName)!;
-        let eventSubscribers = Map.new<Principal, Nat8>(phash);
-
-        let subscriberIdsIter = if (Set.size(publication.whitelist) > 0) Set.keys(publication.whitelist) else Map.keys(subscriptionGroup);
-
-        for (subscriberId in subscriberIdsIter) ignore do ?{
-          let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
-
-          if (subscription.active) {
-            let filterValue = do ?{ get(payload, subscription.filterPath!) };
-
-            if (filterValue != ?#Bool(false)) {
-              if (subscription.skipped >= subscription.skip) {
-                subscription.skipped := 0;
-
-                Map.set(eventSubscribers, phash, subscriberId, 0:Nat8);
-                Set.add(subscription.events, nhash, eventId);
-
-                subscription.numberOfEvents +%= 1;
-              } else {
-                subscription.skipped +%= 1;
-              };
-            };
-          };
-        };
-
-        if (Map.size(eventSubscribers) > 0) {
-          Map.set(events, nhash, eventId, {
-            id = eventId;
-            eventName = eventName;
-            publisherId = caller;
-            payload = payload;
-            createdAt = time();
-            var nextBroadcastTime = time();
-            var numberOfAttempts = 0:Nat8;
-            resendRequests = Set.new(phash);
-            subscribers = eventSubscribers;
-          });
-
-          state.eventId += 1;
-
-          state.nextBroadcastTime := time();
-        };
-      };
-
-      return { eventInfo = InfoModule.getEventInfo(caller, eventId) };
     };
   };
 };

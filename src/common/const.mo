@@ -5,9 +5,13 @@ module {
 
   public let BROADCAST_BATCH_SIZE = 100:Nat8;
 
+  public let SUBSCRIBERS_BATCH_SIZE = 10000;
+
   public let RESEND_ATTEMPTS_LIMIT = 8:Nat8;
 
   public let EVENT_NAME_LENGTH_LIMIT = 50;
+
+  public let FILTER_LENGTH_LIMIT = 500;
 
   public let ACTIVE_SUBSCRIPTIONS_LIMIT = 100:Nat8;
 

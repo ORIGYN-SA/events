@@ -4,18 +4,14 @@ import Prim "mo:prim";
 import Map "mo:map/Map";
 
 module {
-  let { abs; nat8ToNat; natToNat64; hashBlob; encodeUtf8; blobOfPrincipal; principalOfBlob } = Prim;
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   public func intToNat(int: Int): Nat {
-    if (int > 0) abs(int) else 0;
+    if (int > 0) Prim.abs(int) else 0;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public func nat8ToNat64(nat8: Nat8): Nat64 {
-    natToNat64(nat8ToNat(nat8));
+    Prim.natToNat64(Prim.nat8ToNat(nat8));
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -41,4 +37,12 @@ module {
 
     return if (sliceTo > sliceFrom) Array.tabulate<T>(sliceTo - sliceFrom, func(i) { array[sliceFrom + i] }) else [];
   };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public let pthash: Map.HashUtils<(Principal, Text)> = (
+    func(key) = (Prim.hashBlob(Prim.blobOfPrincipal(key.0)) +% Prim.hashBlob(Prim.encodeUtf8(key.1))) & 0x3fffffff,
+    func(a, b) = a.0 == b.0 and a.1 == b.1,
+    func() = (Prim.principalOfBlob(""), ""),
+  );
 };
