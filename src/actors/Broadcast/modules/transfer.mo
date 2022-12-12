@@ -21,14 +21,8 @@ module {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public type PublishResponse = {
-    eventInfo: Types.SharedEvent;
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   public func init(state: State.BroadcastState, deployer: Principal): {
-    transferPublicationStats: (caller: Principal, eventName: Text, payload: Candy.CandyValue) -> PublishResponse;
+    transferPublicationStats: (caller: Principal) -> ();
   } = object {
     let { events; broadcastQueue } = state;
 
@@ -36,28 +30,8 @@ module {
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public func transferPublicationStats(caller: Principal, eventName: Text, payload: Candy.CandyValue): PublishResponse {
-      if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
-
-      let eventId = state.eventId + 1;
-
-      Map.set(events, nhash, eventId, {
-        id = eventId;
-        eventName = eventName;
-        publisherId = caller;
-        payload = payload;
-        createdAt = time();
-        var nextBroadcastTime = time();
-        var numberOfAttempts = 0:Nat8;
-        eventRequests = Set.new(phash);
-        subscribers = Map.new<Principal, Nat8>(phash);
-      });
-
-      Set.addAfter(broadcastQueue, nhash, eventId, state.eventId);
-
-      state.eventId := eventId;
-
-      return { eventInfo = unwrap(InformModule.getEventInfo(deployer, caller, eventId)) };
+    public func transferPublicationStats(caller: Principal) {
+      
     };
   };
 };
