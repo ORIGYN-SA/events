@@ -3,9 +3,15 @@ module {
 
   public let BROADCAST_DELAY = 180_000_000_000:Nat64; // 3 * 60 * 1_000_000_000
 
-  public let BROADCAST_BATCH_SIZE = 100:Nat8;
+  public let STATS_TRANSFER_INTERVAL = 120_000_000_000:Nat64; // 2 * 60 * 1_000_000_000
+
+  public let BROADCAST_BATCH_SIZE = 200:Nat8;
 
   public let SUBSCRIBERS_BATCH_SIZE = 10000;
+
+  public let STATS_BATCH_SIZE = 10000;
+
+  public let SYNC_CALLS_LIMIT = 200:Nat8;
 
   public let RESEND_ATTEMPTS_LIMIT = 8:Nat8;
 

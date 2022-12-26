@@ -5,21 +5,11 @@ import Const "../../../common/const";
 import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
-import MigrationTypes "../../../migrations/types";
-import Prim "mo:prim";
-import Set "mo:map/Set";
+import { nat8ToNat } "mo:prim";
+import { nhash; thash; phash } "mo:map/Map";
+import { Types; State } "../../../migrations/types";
 
 module {
-  let State = MigrationTypes.Current;
-
-  let { get } = CandyUtils;
-
-  let { nhash; thash; phash; lhash } = Map;
-
-  let { nat8ToNat } = Prim;
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   public type SubscribersBatchOptions = {
     from: ?Principal;
     rateSeed: Nat;
@@ -50,7 +40,7 @@ module {
           let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
 
           if (options.rateSeed % 100 <= nat8ToNat(subscription.rate)) {
-            if (subscription.filterPath == null or get(payload, subscription.filterPath!) != #Bool(false)) {
+            if (subscription.filterPath == null or CandyUtils.get(payload, subscription.filterPath!) != #Bool(false)) {
               let listenersSize = subscriber.confirmedListeners.size();
 
               result.add(subscriberId, subscriber.confirmedListeners[options.listenersSeed % listenersSize]);
@@ -61,7 +51,7 @@ module {
         };
       };
 
-      return result.toArray();
+      return Buffer.toArray(result);
     };
   };
 };

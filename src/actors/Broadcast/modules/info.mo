@@ -1,18 +1,10 @@
-import Const "../../../common/const";
 import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
-import MigrationTypes "../../../migrations/types";
-import Types "../../../common/types";
-import Set "mo:map/Set";
+import { nhash; thash; phash } "mo:map/Map";
+import { Types; State } "../../../migrations/types";
 
 module {
-  let State = MigrationTypes.Current;
-
-  let { nhash; thash; phash; lhash } = Map;
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   public func init(state: State.BroadcastState, deployer: Principal): {
     getEventInfo: (caller: Principal, publisherId: Principal, eventId: Nat) -> ?Types.SharedEvent;
   } = object {

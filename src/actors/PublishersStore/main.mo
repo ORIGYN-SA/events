@@ -1,27 +1,46 @@
 import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
 import Errors "../../common/errors";
-import Inform "./modules/inform";
+import Info "./modules/info";
 import MigrationTypes "../../migrations/types";
 import Migrations "../../migrations";
 import Register "./modules/register";
+import Stats "./modules/stats";
 import Supply "./modules/supply";
-import Types "../../common/types";
+import { defaultArgs } "../../migrations";
 
-shared (deployer) actor class PublishersStore() {
-  stable var migrationState: MigrationTypes.State = #v0_0_0(#data(#PublishersStore));
+let Types = MigrationTypes.Types;
 
-  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), {});
+shared (deployer) actor class PublishersStore(canisters: [Types.SharedCanister]) {
+  stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#PublishersStore));
+
+  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { defaultArgs with canisters });
 
   let state = switch (migrationState) { case (#v0_1_0(#data(#PublishersStore(state)))) state; case (_) Debug.trap(Errors.CURRENT_MIGRATION_STATE) };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  let InfoModule = Info.init(state, deployer.caller);
+
   let RegisterModule = Register.init(state, deployer.caller);
 
-  let InformModule = Inform.init(state, deployer.caller);
+  let StatsModule = Stats.init(state, deployer.caller);
 
   let SupplyModule = Supply.init(state, deployer.caller);
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public query (context) func getPublisherInfo(publisherId: Principal, options: ?Info.PublisherInfoOptions): async ?Types.SharedPublisher {
+    InfoModule.getPublisherInfo(context.caller, publisherId, options);
+  };
+
+  public query (context) func getPublicationInfo(publisherId: Principal, eventName: Text, options: ?Info.PublicationInfoOptions): async ?Types.SharedPublication {
+    InfoModule.getPublicationInfo(context.caller, publisherId, eventName, options);
+  };
+
+  public query (context) func getPublicationStats(publisherId: Principal, options: ?Info.PublicationStatsOptions): async Types.SharedStats {
+    InfoModule.getPublicationStats(context.caller, publisherId, options);
+  };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -35,16 +54,8 @@ shared (deployer) actor class PublishersStore() {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query (context) func getPublisherInfo(publisherId: Principal, options: ?Inform.PublisherInfoOptions): async ?Types.SharedPublisher {
-    InformModule.getPublisherInfo(context.caller, publisherId, options);
-  };
-
-  public query (context) func getPublicationInfo(publisherId: Principal, eventName: Text, options: ?Inform.PublicationInfoOptions): async ?Types.SharedPublication {
-    InformModule.getPublicationInfo(context.caller, publisherId, eventName, options);
-  };
-
-  public query (context) func getPublicationStats(publisherId: Principal, options: ?Inform.PublicationStatsOptions): async Types.SharedStats {
-    InformModule.getPublicationStats(context.caller, publisherId, options);
+  public shared (context) func consumePublicationStats(TransferStats: [Stats.TransferStats]): async [Stats.ConsumedStats] {
+    StatsModule.consumePublicationStats(context.caller, TransferStats);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +66,7 @@ shared (deployer) actor class PublishersStore() {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query func addCycles(): async () {
-    ignore Cycles.accept(Cycles.available());
+  public query func addCycles(): async Nat {
+    return Cycles.accept(Cycles.available());
   };
 };

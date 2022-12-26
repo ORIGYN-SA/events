@@ -1,23 +1,13 @@
 import Const "../../../common/const";
 import Map "mo:map/Map";
-import MigrationTypes "../../../migrations/types";
-import Prim "mo:prim";
 import Principal "mo:base/Principal";
 import Set "mo:map/Set";
-import Types "../../../common/types";
-import Utils "../../../utils/misc";
+import { time } "mo:prim";
+import { nhash; thash; phash } "mo:map/Map";
+import { nat8ToNat64 } "../../../utils/misc";
+import { Types; State } "../../../migrations/types";
 
 module {
-  let State = MigrationTypes.Current;
-
-  let { nat8ToNat64 } = Utils;
-
-  let { nhash; thash; phash; lhash } = Map;
-
-  let { time } = Prim;
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   public func init(state: State.BroadcastState, deployer: Principal): {
     broadcast: () -> async ();
   } = object {
@@ -48,22 +38,22 @@ module {
 
                 listenerActor.handleEvent(event.id, event.publisherId, event.eventName, event.payload);
 
-                subscription.numberOfNotifications +%= 1;
+                subscription.numberOfNotifications += 1;
 
-                if (numberOfAttempts > 0) subscription.numberOfResendNotifications +%= 1;
+                if (numberOfAttempts > 0) subscription.numberOfResendNotifications += 1;
 
                 let publicationGroup = Map.get(publications, thash, event.eventName)!;
                 let publication = Map.get(publicationGroup, phash, event.publisherId)!;
 
-                publication.numberOfNotifications +%= 1;
+                publication.numberOfNotifications += 1;
 
-                if (numberOfAttempts > 0) publication.numberOfResendNotifications +%= 1;
+                if (numberOfAttempts > 0) publication.numberOfResendNotifications += 1;
               };
             };
 
-            Map.set(event.subscribers, phash, subscriberId, numberOfAttempts +% 1);
+            Map.set(event.subscribers, phash, subscriberId, numberOfAttempts + 1);
 
-            notificationsCount +%= 1;
+            notificationsCount += 1;
 
             if (notificationsCount % Const.BROADCAST_BATCH_SIZE == 0) break broadcastBatch;
           };
@@ -71,8 +61,8 @@ module {
           iterActive := false;
         };
 
-        event.numberOfAttempts +%= 1;
-        event.nextBroadcastTime := eventBroadcastStartTime + Const.RESEND_DELAY * 2 ** nat8ToNat64(event.numberOfAttempts -% 1);
+        event.numberOfAttempts += 1;
+        event.nextBroadcastTime := eventBroadcastStartTime + Const.RESEND_DELAY * 2 ** nat8ToNat64(event.numberOfAttempts - 1);
       } else {
         Map.delete(events, nhash, event.id);
 
@@ -97,7 +87,9 @@ module {
       if (not state.broadcastActive) try {
         state.broadcastActive := true;
 
-        for (eventId in Set.keys(broadcastQueue)) ignore do ?{ await broadcastEvent(Map.get(events, nhash, eventId)!) };
+        for (eventId in Set.keys(broadcastQueue)) ignore do ?{
+          await broadcastEvent(Map.get(events, nhash, eventId)!);
+        };
 
         state.broadcastActive := false;
       } catch (err) {

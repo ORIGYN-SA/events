@@ -3,31 +3,17 @@ import CandyUtils "mo:candy_utils/CandyUtils";
 import Const "../../../common/const";
 import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
-import Inform "./inform";
+import Info "./info";
 import Map "mo:map/Map";
-import MigrationTypes "../../../migrations/types";
-import Option "mo:base/Option";
-import Prim "mo:prim";
 import Set "mo:map/Set";
 import Stats "../../../common/stats";
-import Types "../../../common/types";
-import Utils "../../../utils/misc";
+import { get = coalesce } "mo:base/Option";
+import { time } "mo:prim";
+import { unwrap } "../../../utils/misc";
+import { nhash; thash; phash } "mo:map/Map";
+import { Types; State } "../../../migrations/types";
 
 module {
-  let State = MigrationTypes.Current;
-
-  let { get = coalesce } = Option;
-
-  let { path } = CandyUtils;
-
-  let { unwrap } = Utils;
-
-  let { nhash; thash; phash; lhash } = Map;
-
-  let { time } = Prim;
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   public type SubscriberOptions = {
     listeners: ?[Principal];
     listenersAdd: ?[Principal];
@@ -86,7 +72,7 @@ module {
   } = object {
     let { subscribers; subscriptions } = state;
 
-    let InfoModule = Inform.init(state, deployer);
+    let InfoModule = Info.init(state, deployer);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -164,7 +150,7 @@ module {
         eventName = eventName;
         subscriberId = subscriberId;
         createdAt = time();
-        stats = Stats.defaultStats();
+        stats = Stats.build();
         var rate = 100:Nat8;
         var active = false;
         var stopped = false;
@@ -175,7 +161,7 @@ module {
 
       if (not subscription.active) {
         subscription.active := true;
-        subscriber.activeSubscriptions +%= 1;
+        subscriber.activeSubscriptions += 1;
 
         if (subscriber.activeSubscriptions > Const.ACTIVE_SUBSCRIPTIONS_LIMIT) Debug.trap(Errors.ACTIVE_SUBSCRIPTIONS_LENGTH);
       };
@@ -190,7 +176,7 @@ module {
 
         if (options!.filter!!.size() > Const.FILTER_LENGTH_LIMIT) Debug.trap(Errors.FILTER_LENGTH);
 
-        subscription.filterPath := ?path(options!.filter!!);
+        subscription.filterPath := ?CandyUtils.path(options!.filter!!);
       };
 
       let subscriptionInfo = unwrap(InfoModule.getSubscriptionInfo(caller, subscriberId, eventName));
@@ -214,7 +200,7 @@ module {
 
         if (subscription.active) {
           subscription.active := false;
-          subscriber.activeSubscriptions -%= 1;
+          subscriber.activeSubscriptions -= 1;
         };
 
         if (options!.purge!) {

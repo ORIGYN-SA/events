@@ -1,117 +1,71 @@
-import Candy "mo:candy_0_1_9/types";
-import CandyUtils "mo:candy_utils_0_2_1/CandyUtils";
-import Map "mo:map_8_0_0_rc_2/Map";
-import Set "mo:map_8_0_0_rc_2/Set";
+import Candy "mo:candy/types";
+import CurrentState "./state";
 
 module {
-  public type CanisterType = {
-    #Broadcast;
-    #Main;
-    #PublishersStore;
-    #SubscribersStore;
+  public let State = CurrentState;
+
+  public type ListenerActor = actor {
+    handleEvent: (eventId: Nat, publisherId: Principal, eventName: Text, payload: Candy.CandyValue) -> async ();
   };
 
-  public type Canister = {
+  public type SharedCanister = {
     canisterId: Principal;
-    canisterType: CanisterType;
-    var heapSize: Nat;
-    var balance: Nat;
+    canisterType: State.CanisterType;
+    heapSize: Nat;
+    balance: Nat;
   };
 
-  public type Stats = {
-    var numberOfEvents: Nat64;
-    var numberOfNotifications: Nat64;
-    var numberOfResendNotifications: Nat64;
-    var numberOfRequestedNotifications: Nat64;
-    var numberOfConfirmations: Nat64;
+  public type SharedStats = {
+    numberOfEvents: Nat64;
+    numberOfNotifications: Nat64;
+    numberOfResendNotifications: Nat64;
+    numberOfRequestedNotifications: Nat64;
+    numberOfConfirmations: Nat64;
   };
 
-  public type Publisher = {
+  public type SharedPublisher = {
     id: Principal;
     createdAt: Nat64;
-    var activePublications: Nat8;
-    publications: Set.Set<Text>;
+    activePublications: Nat8;
+    publications: [Text];
   };
 
-  public type Publication = {
+  public type SharedPublication = {
     eventName: Text;
     publisherId: Principal;
     createdAt: Nat64;
-    stats: Stats;
-    var active: Bool;
-    whitelist: Set.Set<Principal>;
+    stats: SharedStats;
+    active: Bool;
+    whitelist: [Principal];
   };
 
-  public type Subscriber = {
+  public type SharedSubscriber = {
     id: Principal;
     createdAt: Nat64;
-    var activeSubscriptions: Nat8;
-    var listeners: Set.Set<Principal>;
-    var confirmedListeners: [Principal];
-    subscriptions: Set.Set<Text>;
+    activeSubscriptions: Nat8;
+    listeners: [Principal];
+    confirmedListeners: [Principal];
+    subscriptions: [Text];
   };
 
-  public type Subscription = {
+  public type SharedSubscription = {
     eventName: Text;
     subscriberId: Principal;
     createdAt: Nat64;
-    stats: Stats;
-    var rate: Nat8;
-    var active: Bool;
-    var stopped: Bool;
-    var filter: ?Text;
-    var filterPath: ?CandyUtils.Path;
+    stats: SharedStats;
+    rate: Nat8;
+    active: Bool;
+    stopped: Bool;
+    filter: ?Text;
   };
 
-  public type Event = {
+  public type SharedEvent = {
     id: Nat;
     eventName: Text;
     publisherId: Principal;
     payload: Candy.CandyValue;
     createdAt: Nat64;
-    var nextBroadcastTime: Nat64;
-    var numberOfAttempts: Nat8;
-    eventRequests: Set.Set<Principal>;
-    subscribers: Map.Map<Principal, Nat8>;
-  };
-
-  public type PublicationGroup = Map.Map<Principal, Publication>;
-
-  public type SubscriptionGroup = Map.Map<Principal, Subscription>;
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public type BroadcastState = {
-    var eventId: Nat;
-    var broadcastActive: Bool;
-    var maxQueueSize: Nat32;
-    events: Map.Map<Nat, Event>;
-    broadcastQueue: Set.Set<Nat>;
-    publicationStatsBatch: Map.Map<(Principal, Text), Stats>;
-    subscriptionStatsBatch: Map.Map<(Principal, Text), Stats>;
-  };
-
-  public type MainState = {
-    canisters: Map.Map<Principal, Canister>;
-    broadcastCanisters: Map.Map<Principal, Canister>;
-    publishersStoreCanisters: Map.Map<Principal, Canister>;
-    subscribersStoreCanisters: Map.Map<Principal, Canister>;
-  };
-
-  public type PublishersStoreState = {
-    publishers: Map.Map<Principal, Publisher>;
-    publications: Map.Map<Text, PublicationGroup>;
-  };
-
-  public type SubscribersStoreState = {
-    subscribers: Map.Map<Principal, Subscriber>;
-    subscriptions: Map.Map<Text, SubscriptionGroup>;
-  };
-
-  public type State = {
-    #Broadcast: BroadcastState;
-    #Main: MainState;
-    #PublishersStore: PublishersStoreState;
-    #SubscribersStore: SubscribersStoreState;
+    nextBroadcastTime: Nat64;
+    numberOfAttempts: Nat8;
   };
 };

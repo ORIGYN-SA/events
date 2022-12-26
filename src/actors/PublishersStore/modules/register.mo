@@ -1,34 +1,17 @@
-import Candy "mo:candy/types";
-import CandyUtils "mo:candy_utils/CandyUtils";
 import Const "../../../common/const";
 import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
-import Inform "./inform";
+import Info "./info";
 import Map "mo:map/Map";
-import MigrationTypes "../../../migrations/types";
-import Option "mo:base/Option";
-import Prim "mo:prim";
-import Principal "mo:base/Principal";
 import Set "mo:map/Set";
 import Stats "../../../common/stats";
-import Types "../../../common/types";
-import Utils "../../../utils/misc";
+import { get = coalesce } "mo:base/Option";
+import { time } "mo:prim";
+import { unwrap } "../../../utils/misc";
+import { nhash; thash; phash } "mo:map/Map";
+import { Types; State } "../../../migrations/types";
 
 module {
-  let State = MigrationTypes.Current;
-
-  let { get = coalesce } = Option;
-
-  let { get } = CandyUtils;
-
-  let { unwrap } = Utils;
-
-  let { nhash; thash; phash; lhash } = Map;
-
-  let { time } = Prim;
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   public type PublicationOptions = {
     whitelist: ?[Principal];
     whitelistAdd: ?[Principal];
@@ -67,14 +50,14 @@ module {
   } = object {
     let { publishers; publications } = state;
 
-    let InformModule = Inform.init(state, deployer);
+    let InfoModule = Info.init(state, deployer);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     public func registerPublication(caller: Principal, publisherId: Principal, eventName: Text, options: ?PublicationOptions): PublicationResponse {
       if (caller != deployer) Debug.trap(Errors.PERMISSION_DENIED);
 
-      let prevPublicationInfo = InformModule.getPublicationInfo(caller, publisherId, eventName, options);
+      let prevPublicationInfo = InfoModule.getPublicationInfo(caller, publisherId, eventName, options);
 
       let publisher = Map.update<Principal, State.Publisher>(publishers, phash, publisherId, func(key, value) = coalesce(value, {
         id = publisherId;
@@ -95,14 +78,14 @@ module {
         eventName = eventName;
         publisherId = publisherId;
         createdAt = time();
-        stats = Stats.defaultStats();
+        stats = Stats.build();
         var active = false;
         whitelist = Set.new(phash);
       }));
 
       if (not publication.active) {
         publication.active := true;
-        publisher.activePublications +%= 1;
+        publisher.activePublications += 1;
 
         if (publisher.activePublications > Const.ACTIVE_PUBLICATIONS_LIMIT) Debug.trap(Errors.ACTIVE_PUBLICATIONS_LENGTH);
       };
@@ -129,7 +112,7 @@ module {
         for (principalId in options!.whitelistRemove!.vals()) Set.delete(publication.whitelist, phash, principalId);
       };
 
-      let publicationInfo = unwrap(InformModule.getPublicationInfo(caller, publisherId, eventName, options));
+      let publicationInfo = unwrap(InfoModule.getPublicationInfo(caller, publisherId, eventName, options));
 
       return { publication; publicationInfo; prevPublicationInfo };
     };
@@ -141,7 +124,7 @@ module {
 
       if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
 
-      let prevPublicationInfo = InformModule.getPublicationInfo(caller, publisherId, eventName, options);
+      let prevPublicationInfo = InfoModule.getPublicationInfo(caller, publisherId, eventName, options);
 
       ignore do ?{
         let publisher = Map.get(publishers, phash, publisherId)!;
@@ -150,7 +133,7 @@ module {
 
         if (publication.active) {
           publication.active := false;
-          publisher.activePublications -%= 1;
+          publisher.activePublications -= 1;
         };
 
         if (options!.purge!) {
@@ -161,7 +144,7 @@ module {
         };
       };
 
-      let publicationInfo = InformModule.getPublicationInfo(caller, publisherId, eventName, options);
+      let publicationInfo = InfoModule.getPublicationInfo(caller, publisherId, eventName, options);
 
       return { publicationInfo; prevPublicationInfo };
     };

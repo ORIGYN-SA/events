@@ -2,16 +2,11 @@ import Array "mo:base/Array";
 import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
-import MigrationTypes "../../../migrations/types";
 import Set "mo:map/Set";
+import { nhash; thash; phash } "mo:map/Map";
+import { Types; State } "../../../migrations/types";
 
 module {
-  let State = MigrationTypes.Current;
-
-  let { nhash; thash; phash; lhash } = Map;
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   public type ConfirmListenerResponse = {
     confirmed: Bool;
   };

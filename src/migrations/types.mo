@@ -1,12 +1,20 @@
 import V0_1_0 "./00-01-00-initial/types";
 
 module {
-  public let Current = V0_1_0;
+  public let Types = V0_1_0;
 
-  public type Args = {};
+  public let State = V0_1_0.State;
 
-  public type State = {
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public type Args = {
+    canisters: [V0_1_0.SharedCanister];
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public type StateList = {
     #v0_0_0: { #id; #data: { #Broadcast; #Main; #PublishersStore; #SubscribersStore } };
-    #v0_1_0: { #id; #data: V0_1_0.State };
+    #v0_1_0: { #id; #data: V0_1_0.State.State };
   };
 };

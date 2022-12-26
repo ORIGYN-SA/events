@@ -2,18 +2,12 @@ import Const "../../../common/const";
 import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
-import MigrationTypes "../../../migrations/types";
-import Types "../../../common/types";
 import Set "mo:map/Set";
 import Stats "../../../common/stats";
+import { nhash; thash; phash } "mo:map/Map";
+import { Types; State } "../../../migrations/types";
 
 module {
-  let State = MigrationTypes.Current;
-
-  let { nhash; thash; phash; lhash } = Map;
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   public type PublisherInfoOptions = {
     includePublications: ?Bool;
   };
@@ -84,7 +78,7 @@ module {
           eventName = publication.eventName;
           publisherId = publication.publisherId;
           createdAt = publication.createdAt;
-          stats = Stats.shareStats(publication.stats);
+          stats = Stats.share(publication.stats);
           active = publication.active;
           whitelist = whitelist;
         };
@@ -98,7 +92,7 @@ module {
     public func getPublicationStats(caller: Principal, publisherId: Principal, options: ?PublicationStatsOptions): Types.SharedStats {
       if (caller != deployer) Debug.trap(Errors.PERMISSION_DENIED);
 
-      let stats = Stats.defaultStats();
+      let stats = Stats.build();
 
       ignore do ?{
         let publisher = Map.get(publishers, phash, publisherId)!;
@@ -117,15 +111,15 @@ module {
 
           ignore do ? { if (publication.active != options!.active!) break iteration };
 
-          stats.numberOfEvents +%= publication.stats.numberOfEvents;
-          stats.numberOfNotifications +%= publication.stats.numberOfNotifications;
-          stats.numberOfResendNotifications +%= publication.stats.numberOfResendNotifications;
-          stats.numberOfRequestedNotifications +%= publication.stats.numberOfRequestedNotifications;
-          stats.numberOfConfirmations +%= publication.stats.numberOfConfirmations;
+          stats.numberOfEvents += publication.stats.numberOfEvents;
+          stats.numberOfNotifications += publication.stats.numberOfNotifications;
+          stats.numberOfResendNotifications += publication.stats.numberOfResendNotifications;
+          stats.numberOfRequestedNotifications += publication.stats.numberOfRequestedNotifications;
+          stats.numberOfConfirmations += publication.stats.numberOfConfirmations;
         };
       };
 
-      return Stats.shareStats(stats);
+      return Stats.share(stats);
     };
   };
 };

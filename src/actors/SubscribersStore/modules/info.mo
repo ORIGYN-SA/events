@@ -2,18 +2,12 @@ import Const "../../../common/const";
 import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
-import MigrationTypes "../../../migrations/types";
-import Types "../../../common/types";
 import Set "mo:map/Set";
 import Stats "../../../common/stats";
+import { nhash; thash; phash } "mo:map/Map";
+import { Types; State } "../../../migrations/types";
 
 module {
-  let State = MigrationTypes.Current;
-
-  let { nhash; thash; phash; lhash } = Map;
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   public type SubscriberInfoOptions = {
     includeListeners: ?Bool;
     includeSubscriptions: ?Bool;
@@ -83,7 +77,7 @@ module {
           eventName = subscription.eventName;
           subscriberId = subscription.subscriberId;
           createdAt = subscription.createdAt;
-          stats = Stats.shareStats(subscription.stats);
+          stats = Stats.share(subscription.stats);
           rate = subscription.rate;
           active = subscription.active;
           stopped = subscription.stopped;
@@ -99,7 +93,7 @@ module {
     public func getSubscriptionStats(caller: Principal, subscriberId: Principal, options: ?SubscriptionStatsOptions): Types.SharedStats {
       if (caller != deployer) Debug.trap(Errors.PERMISSION_DENIED);
 
-      let stats = Stats.defaultStats();
+      let stats = Stats.build();
 
       ignore do ?{
         let subscriber = Map.get(subscribers, phash, subscriberId)!;
@@ -118,15 +112,15 @@ module {
 
           ignore do ? { if (subscription.active != options!.active!) break iteration };
 
-          stats.numberOfEvents +%= subscription.stats.numberOfEvents;
-          stats.numberOfNotifications +%= subscription.stats.numberOfNotifications;
-          stats.numberOfResendNotifications +%= subscription.stats.numberOfResendNotifications;
-          stats.numberOfRequestedNotifications +%= subscription.stats.numberOfRequestedNotifications;
-          stats.numberOfConfirmations +%= subscription.stats.numberOfConfirmations;
+          stats.numberOfEvents += subscription.stats.numberOfEvents;
+          stats.numberOfNotifications += subscription.stats.numberOfNotifications;
+          stats.numberOfResendNotifications += subscription.stats.numberOfResendNotifications;
+          stats.numberOfRequestedNotifications += subscription.stats.numberOfRequestedNotifications;
+          stats.numberOfConfirmations += subscription.stats.numberOfConfirmations;
         };
       };
 
-      return Stats.shareStats(stats);
+      return Stats.share(stats);
     };
   };
 };
