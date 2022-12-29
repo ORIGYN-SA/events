@@ -5,33 +5,31 @@ import { nhash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
-  public func init(state: State.BroadcastState, deployer: Principal): {
-    getEventInfo: (caller: Principal, publisherId: Principal, eventId: Nat) -> ?Types.SharedEvent;
-  } = object {
-    let { events } = state;
+  public type EventInfoResponse = ?Types.SharedEvent;
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  public type EventInfoParams = (publisherId: Principal, eventId: Nat);
 
-    public func getEventInfo(caller: Principal, publisherId: Principal, eventId: Nat): ?Types.SharedEvent {
-      if (caller != deployer) Debug.trap(Errors.PERMISSION_DENIED);
+  public type EventInfoFullParams = (caller: Principal, state: State.BroadcastState, params: EventInfoParams);
 
-      var result = null:?Types.SharedEvent;
+  public func getEventInfo((caller, state, (publisherId, eventId)): EventInfoFullParams): EventInfoResponse {
+    if (caller != state.mainId) Debug.trap(Errors.PERMISSION_DENIED);
 
-      ignore do ?{
-        let event = Map.get(events, nhash, eventId)!;
+    var result = null:?Types.SharedEvent;
 
-        if (event.publisherId == publisherId) result := ?{
-          id = event.id;
-          eventName = event.eventName;
-          publisherId = event.publisherId;
-          payload = event.payload;
-          createdAt = event.createdAt;
-          nextBroadcastTime = event.nextBroadcastTime;
-          numberOfAttempts = event.numberOfAttempts;
-        };
+    ignore do ?{
+      let event = Map.get(state.events, nhash, eventId)!;
+
+      if (event.publisherId == publisherId) result := ?{
+        id = event.id;
+        eventName = event.eventName;
+        publisherId = event.publisherId;
+        payload = event.payload;
+        createdAt = event.createdAt;
+        nextBroadcastTime = event.nextBroadcastTime;
+        numberOfAttempts = event.numberOfAttempts;
       };
-
-      return result;
     };
+
+    return result;
   };
 };

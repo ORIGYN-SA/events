@@ -15,39 +15,31 @@ module {
     eventInfo: Types.SharedEvent;
   };
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  public type PublishParams = (eventName: Text, payload: Candy.CandyValue);
 
-  public func init(state: State.BroadcastState, deployer: Principal): {
-    publish: (caller: Principal, eventName: Text, payload: Candy.CandyValue) -> PublishResponse;
-  } = object {
-    let { events; broadcastQueue } = state;
+  public type PublishFullParams = (caller: Principal, state: State.BroadcastState, params: PublishParams);
 
-    let InfoModule = Info.init(state, deployer);
+  public func publish((caller, state, (eventName, payload)): PublishFullParams): PublishResponse {
+    if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    let eventId = state.eventId + 1;
 
-    public func publish(caller: Principal, eventName: Text, payload: Candy.CandyValue): PublishResponse {
-      if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
+    Map.set(state.events, nhash, eventId, {
+      id = eventId;
+      eventName = eventName;
+      publisherId = caller;
+      payload = payload;
+      createdAt = time();
+      var nextBroadcastTime = time();
+      var numberOfAttempts = 0:Nat8;
+      eventRequests = Set.new(phash);
+      subscribers = Map.new<Principal, Nat8>(phash);
+    });
 
-      let eventId = state.eventId + 1;
+    Set.addAfter(state.broadcastQueue, nhash, eventId, state.eventId);
 
-      Map.set(events, nhash, eventId, {
-        id = eventId;
-        eventName = eventName;
-        publisherId = caller;
-        payload = payload;
-        createdAt = time();
-        var nextBroadcastTime = time();
-        var numberOfAttempts = 0:Nat8;
-        eventRequests = Set.new(phash);
-        subscribers = Map.new<Principal, Nat8>(phash);
-      });
+    state.eventId := eventId;
 
-      Set.addAfter(broadcastQueue, nhash, eventId, state.eventId);
-
-      state.eventId := eventId;
-
-      return { eventInfo = unwrap(InfoModule.getEventInfo(deployer, caller, eventId)) };
-    };
+    return { eventInfo = unwrap(Info.getEventInfo(state.mainId, state, (caller, eventId))) };
   };
 };

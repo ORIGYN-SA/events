@@ -11,57 +11,55 @@ import { defaultArgs } "../../migrations";
 
 let Types = MigrationTypes.Types;
 
-shared (deployer) actor class PublishersStore(canisters: [Types.SharedCanister]) {
+shared actor class PublishersStore(
+  mainId: ?Principal,
+  publishersIndexId: ?Principal,
+  broadcastIds: [Principal],
+) {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#PublishersStore));
 
-  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { defaultArgs with canisters });
+  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { defaultArgs with mainId; publishersIndexId; broadcastIds });
 
   let state = switch (migrationState) { case (#v0_1_0(#data(#PublishersStore(state)))) state; case (_) Debug.trap(Errors.CURRENT_MIGRATION_STATE) };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  let InfoModule = Info.init(state, deployer.caller);
-
-  let RegisterModule = Register.init(state, deployer.caller);
-
-  let StatsModule = Stats.init(state, deployer.caller);
-
-  let SupplyModule = Supply.init(state, deployer.caller);
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public query (context) func getPublisherInfo(publisherId: Principal, options: ?Info.PublisherInfoOptions): async ?Types.SharedPublisher {
-    InfoModule.getPublisherInfo(context.caller, publisherId, options);
+  public query (context) func getPublisherInfo(params: Info.PublisherInfoParams): async Info.PublisherInfoResponse {
+    Info.getPublisherInfo(context.caller, state, params);
   };
 
-  public query (context) func getPublicationInfo(publisherId: Principal, eventName: Text, options: ?Info.PublicationInfoOptions): async ?Types.SharedPublication {
-    InfoModule.getPublicationInfo(context.caller, publisherId, eventName, options);
+  public query (context) func getPublicationInfo(params: Info.PublicationInfoParams): async Info.PublicationInfoResponse {
+    Info.getPublicationInfo(context.caller, state, params);
   };
 
-  public query (context) func getPublicationStats(publisherId: Principal, options: ?Info.PublicationStatsOptions): async Types.SharedStats {
-    InfoModule.getPublicationStats(context.caller, publisherId, options);
+  public query (context) func getPublicationStats(params: Info.PublicationStatsParams): async Info.PublicationStatsResponse {
+    Info.getPublicationStats(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func registerPublication(publisherId: Principal, eventName: Text, options: ?Register.PublicationOptions): async Register.PublicationInfo {
-    RegisterModule.registerPublication(context.caller, publisherId, eventName, options);
+  public shared (context) func registerPublisher(params: Register.PublisherParams): async Register.PublisherResponse {
+    Register.registerPublisher(context.caller, state, params);
   };
 
-  public shared (context) func removePublication(publisherId: Principal, eventName: Text, options: ?Register.RemovePublicationOptions): async Register.RemovePublicationResponse {
-    RegisterModule.removePublication(context.caller, publisherId, eventName, options);
+  public shared (context) func registerPublication(params: Register.PublicationParams): async Register.PublicationResponse {
+    Register.registerPublication(context.caller, state, params);
+  };
+
+  public shared (context) func removePublication(params: Register.RemovePublicationParams): async Register.RemovePublicationResponse {
+    Register.removePublication(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func consumePublicationStats(TransferStats: [Stats.TransferStats]): async [Stats.ConsumedStats] {
-    StatsModule.consumePublicationStats(context.caller, TransferStats);
+  public shared (context) func consumePublicationStats(params: Stats.CosumeStatsParams): async Stats.CosumeStatsResponse {
+    Stats.consumePublicationStats(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query (context) func supplyPublicationData(publisherId: Principal, eventName: Text): async Supply.PublicationDataResponse {
-    SupplyModule.supplyPublicationData(context.caller, publisherId, eventName);
+  public query (context) func supplyPublicationData(params: Supply.PublicationDataParams): async Supply.PublicationDataResponse {
+    Supply.supplyPublicationData(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

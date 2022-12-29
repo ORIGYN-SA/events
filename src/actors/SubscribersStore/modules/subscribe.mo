@@ -22,15 +22,70 @@ module {
     includeSubscriptions: ?Bool;
   };
 
-  public type SubscriberInfo = {
+  public type SubscriberResponse = {
     subscriberInfo: Types.SharedSubscriber;
     prevSubscriberInfo: ?Types.SharedSubscriber;
   };
 
-  public type SubscriberResponse = {
+  public type SubscriberFullResponse = {
     subscriber: State.Subscriber;
     subscriberInfo: Types.SharedSubscriber;
     prevSubscriberInfo: ?Types.SharedSubscriber;
+  };
+
+  public type SubscriberParams = (subscriberId: Principal, options: ?SubscriberOptions);
+
+  public type SubscriberFullParams = (caller: Principal, state: State.SubscribersStoreState, params: SubscriberParams);
+
+  public func registerSubscriber((caller, state, (subscriberId, options)): SubscriberFullParams): SubscriberFullResponse {
+    if (caller != state.subscribersIndexId) Debug.trap(Errors.PERMISSION_DENIED);
+
+    let prevSubscriberInfo = Info.getSubscriberInfo(state.subscribersIndexId, state, (subscriberId, options));
+
+    let subscriber = Map.update<Principal, State.Subscriber>(state.subscribers, phash, subscriberId, func(key, value) = coalesce(value, {
+      id = subscriberId;
+      createdAt = time();
+      var activeSubscriptions = 0:Nat8;
+      var listeners = Set.fromIter([subscriberId].vals(), phash);
+      var confirmedListeners = [subscriberId];
+      subscriptions = Set.new(thash);
+    }));
+
+    ignore do ?{
+      if (options!.listeners!.size() > Const.LISTENERS_LIMIT) Debug.trap(Errors.LISTENERS_REPLACE_LENGTH);
+
+      subscriber.listeners := Set.fromIter(options!.listeners!.vals(), phash);
+
+      subscriber.confirmedListeners := Array.filter<Principal>(subscriber.confirmedListeners, func(listenerId) {
+        return listenerId == subscriberId or Set.has(subscriber.listeners, phash, listenerId);
+      });
+    };
+
+    ignore do ?{
+      if (options!.listenersAdd!.size() > Const.LISTENERS_LIMIT) Debug.trap(Errors.LISTENERS_ADD_LENGTH);
+
+      for (listenerId in options!.listenersAdd!.vals()) Set.add(subscriber.listeners, phash, listenerId);
+
+      if (Set.size(subscriber.listeners) > Const.LISTENERS_LIMIT) Debug.trap(Errors.LISTENERS_LENGTH);
+
+      subscriber.confirmedListeners := Array.filter<Principal>(subscriber.confirmedListeners, func(listenerId) {
+        return listenerId == subscriberId or Set.has(subscriber.listeners, phash, listenerId);
+      });
+    };
+
+    ignore do ?{
+      if (options!.listenersRemove!.size() > Const.LISTENERS_LIMIT) Debug.trap(Errors.LISTENERS_REMOVE_LENGTH);
+
+      for (principalId in options!.listenersRemove!.vals()) Set.delete(subscriber.listeners, phash, principalId);
+
+      subscriber.confirmedListeners := Array.filter<Principal>(subscriber.confirmedListeners, func(listenerId) {
+        return listenerId == subscriberId or Set.has(subscriber.listeners, phash, listenerId);
+      });
+    };
+
+    let subscriberInfo = unwrap(Info.getSubscriberInfo(state.subscribersIndexId, state, (subscriberId, options)));
+
+    return { subscriber; subscriberInfo; prevSubscriberInfo };
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -41,15 +96,74 @@ module {
     filter: ??Text;
   };
 
-  public type SubscriptionInfo = {
+  public type SubscriptionResponse = {
     subscriptionInfo: Types.SharedSubscription;
     prevSubscriptionInfo: ?Types.SharedSubscription;
   };
 
-  public type SubscriptionResponse = {
+  public type SubscriptionFullResponse = {
     subscription: State.Subscription;
     subscriptionInfo: Types.SharedSubscription;
     prevSubscriptionInfo: ?Types.SharedSubscription;
+  };
+
+  public type SubscriptionParams = (subscriberId: Principal, eventName: Text, options: ?SubscriptionOptions);
+
+  public type SubscriptionFullParams = (caller: Principal, state: State.SubscribersStoreState, params: SubscriptionParams);
+
+  public func subscribe((caller, state, (subscriberId, eventName, options)): SubscriptionFullParams): SubscriptionFullResponse {
+    if (caller != state.subscribersIndexId) Debug.trap(Errors.PERMISSION_DENIED);
+
+    let prevSubscriptionInfo = Info.getSubscriptionInfo(state.subscribersIndexId, state, (subscriberId, eventName));
+
+    if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
+
+    let { subscriber } = registerSubscriber(state.subscribersIndexId, state, (subscriberId, null));
+
+    Set.add(subscriber.subscriptions, thash, eventName);
+
+    if (Set.size(subscriber.subscriptions) > Const.SUBSCRIPTIONS_LIMIT) Debug.trap(Errors.SUBSCRIPTIONS_LENGTH);
+
+    let subscriptionGroup = Map.update<Text, State.SubscriptionGroup>(state.subscriptions, thash, eventName, func(key, value) {
+      return coalesce<State.SubscriptionGroup>(value, Map.new(phash));
+    });
+
+    let subscription = Map.update<Principal, State.Subscription>(subscriptionGroup, phash, subscriberId, func(key, value) = coalesce(value, {
+      eventName = eventName;
+      subscriberId = subscriberId;
+      createdAt = time();
+      stats = Stats.build();
+      var rate = 100:Nat8;
+      var active = false;
+      var stopped = false;
+      var filter = null:?Text;
+      var filterPath = null:?CandyUtils.Path;
+      events = Set.new(nhash);
+    }));
+
+    if (not subscription.active) {
+      subscription.active := true;
+      subscriber.activeSubscriptions += 1;
+
+      if (subscriber.activeSubscriptions > Const.ACTIVE_SUBSCRIPTIONS_LIMIT) Debug.trap(Errors.ACTIVE_SUBSCRIPTIONS_LENGTH);
+    };
+
+    ignore do ?{ subscription.stopped := options!.stopped! };
+
+    ignore do ?{ subscription.rate := options!.rate! };
+
+    ignore do ?{
+      subscription.filter := options!.filter!;
+      subscription.filterPath := null;
+
+      if (options!.filter!!.size() > Const.FILTER_LENGTH_LIMIT) Debug.trap(Errors.FILTER_LENGTH);
+
+      subscription.filterPath := ?CandyUtils.path(options!.filter!!);
+    };
+
+    let subscriptionInfo = unwrap(Info.getSubscriptionInfo(state.subscribersIndexId, state, (subscriberId, eventName)));
+
+    return { subscription; subscriptionInfo; prevSubscriptionInfo };
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -63,157 +177,37 @@ module {
     prevSubscriptionInfo: ?Types.SharedSubscription;
   };
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  public type UnsubscribeParams = (subscriberId: Principal, eventName: Text, options: ?UnsubscribeOptions);
 
-  public func init(state: State.SubscribersStoreState, deployer: Principal): {
-    registerSubscriber: (caller: Principal, subscriberId: Principal, options: ?SubscriberOptions) -> SubscriberResponse;
-    subscribe: (caller: Principal, subscriberId: Principal, eventName: Text, options: ?SubscriptionOptions) -> SubscriptionResponse;
-    unsubscribe: (caller: Principal, subscriberId: Principal, eventName: Text, options: ?UnsubscribeOptions) -> UnsubscribeResponse;
-  } = object {
-    let { subscribers; subscriptions } = state;
+  public type UnsubscribeFullParams = (caller: Principal, state: State.SubscribersStoreState, params: UnsubscribeParams);
 
-    let InfoModule = Info.init(state, deployer);
+  public func unsubscribe((caller, state, (subscriberId, eventName, options)): UnsubscribeFullParams): UnsubscribeResponse {
+    if (caller != state.subscribersIndexId) Debug.trap(Errors.PERMISSION_DENIED);
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
 
-    public func registerSubscriber(caller: Principal, subscriberId: Principal, options: ?SubscriberOptions): SubscriberResponse {
-      if (caller != deployer) Debug.trap(Errors.PERMISSION_DENIED);
+    let prevSubscriptionInfo = Info.getSubscriptionInfo(state.subscribersIndexId, state, (subscriberId, eventName));
 
-      let prevSubscriberInfo = InfoModule.getSubscriberInfo(caller, subscriberId, options);
+    ignore do ?{
+      let subscriber = Map.get(state.subscribers, phash, subscriberId)!;
+      let subscriptionGroup = Map.get(state.subscriptions, thash, eventName)!;
+      let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
 
-      let subscriber = Map.update<Principal, State.Subscriber>(subscribers, phash, subscriberId, func(key, value) = coalesce(value, {
-        id = subscriberId;
-        createdAt = time();
-        var activeSubscriptions = 0:Nat8;
-        var listeners = Set.fromIter([subscriberId].vals(), phash);
-        var confirmedListeners = [subscriberId];
-        subscriptions = Set.new(thash);
-      }));
-
-      ignore do ?{
-        if (options!.listeners!.size() > Const.LISTENERS_LIMIT) Debug.trap(Errors.LISTENERS_REPLACE_LENGTH);
-
-        subscriber.listeners := Set.fromIter(options!.listeners!.vals(), phash);
-
-        subscriber.confirmedListeners := Array.filter<Principal>(subscriber.confirmedListeners, func(listenerId) {
-          return listenerId == subscriberId or Set.has(subscriber.listeners, phash, listenerId);
-        });
+      if (subscription.active) {
+        subscription.active := false;
+        subscriber.activeSubscriptions -= 1;
       };
 
-      ignore do ?{
-        if (options!.listenersAdd!.size() > Const.LISTENERS_LIMIT) Debug.trap(Errors.LISTENERS_ADD_LENGTH);
+      if (options!.purge!) {
+        Set.delete(subscriber.subscriptions, thash, eventName);
+        Map.delete(subscriptionGroup, phash, subscriberId);
 
-        for (listenerId in options!.listenersAdd!.vals()) Set.add(subscriber.listeners, phash, listenerId);
-
-        if (Set.size(subscriber.listeners) > Const.LISTENERS_LIMIT) Debug.trap(Errors.LISTENERS_LENGTH);
-
-        subscriber.confirmedListeners := Array.filter<Principal>(subscriber.confirmedListeners, func(listenerId) {
-          return listenerId == subscriberId or Set.has(subscriber.listeners, phash, listenerId);
-        });
+        if (Map.size(subscriptionGroup) == 0) Map.delete(state.subscriptions, thash, eventName);
       };
-
-      ignore do ?{
-        if (options!.listenersRemove!.size() > Const.LISTENERS_LIMIT) Debug.trap(Errors.LISTENERS_REMOVE_LENGTH);
-
-        for (principalId in options!.listenersRemove!.vals()) Set.delete(subscriber.listeners, phash, principalId);
-
-        subscriber.confirmedListeners := Array.filter<Principal>(subscriber.confirmedListeners, func(listenerId) {
-          return listenerId == subscriberId or Set.has(subscriber.listeners, phash, listenerId);
-        });
-      };
-
-      let subscriberInfo = unwrap(InfoModule.getSubscriberInfo(caller, subscriberId, options));
-
-      return { subscriber; subscriberInfo; prevSubscriberInfo };
     };
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    let subscriptionInfo = Info.getSubscriptionInfo(state.subscribersIndexId, state, (subscriberId, eventName));
 
-    public func subscribe(caller: Principal, subscriberId: Principal, eventName: Text, options: ?SubscriptionOptions): SubscriptionResponse {
-      if (caller != deployer) Debug.trap(Errors.PERMISSION_DENIED);
-
-      let prevSubscriptionInfo = InfoModule.getSubscriptionInfo(caller, subscriberId, eventName);
-
-      if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
-
-      let { subscriber } = registerSubscriber(caller, subscriberId, null);
-
-      Set.add(subscriber.subscriptions, thash, eventName);
-
-      if (Set.size(subscriber.subscriptions) > Const.SUBSCRIPTIONS_LIMIT) Debug.trap(Errors.SUBSCRIPTIONS_LENGTH);
-
-      let subscriptionGroup = Map.update<Text, State.SubscriptionGroup>(subscriptions, thash, eventName, func(key, value) {
-        return coalesce<State.SubscriptionGroup>(value, Map.new(phash));
-      });
-
-      let subscription = Map.update<Principal, State.Subscription>(subscriptionGroup, phash, subscriberId, func(key, value) = coalesce(value, {
-        eventName = eventName;
-        subscriberId = subscriberId;
-        createdAt = time();
-        stats = Stats.build();
-        var rate = 100:Nat8;
-        var active = false;
-        var stopped = false;
-        var filter = null:?Text;
-        var filterPath = null:?CandyUtils.Path;
-        events = Set.new(nhash);
-      }));
-
-      if (not subscription.active) {
-        subscription.active := true;
-        subscriber.activeSubscriptions += 1;
-
-        if (subscriber.activeSubscriptions > Const.ACTIVE_SUBSCRIPTIONS_LIMIT) Debug.trap(Errors.ACTIVE_SUBSCRIPTIONS_LENGTH);
-      };
-
-      ignore do ?{ subscription.stopped := options!.stopped! };
-
-      ignore do ?{ subscription.rate := options!.rate! };
-
-      ignore do ?{
-        subscription.filter := options!.filter!;
-        subscription.filterPath := null;
-
-        if (options!.filter!!.size() > Const.FILTER_LENGTH_LIMIT) Debug.trap(Errors.FILTER_LENGTH);
-
-        subscription.filterPath := ?CandyUtils.path(options!.filter!!);
-      };
-
-      let subscriptionInfo = unwrap(InfoModule.getSubscriptionInfo(caller, subscriberId, eventName));
-
-      return { subscription; subscriptionInfo; prevSubscriptionInfo };
-    };
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    public func unsubscribe(caller: Principal, subscriberId: Principal, eventName: Text, options: ?UnsubscribeOptions): UnsubscribeResponse {
-      if (caller != deployer) Debug.trap(Errors.PERMISSION_DENIED);
-
-      if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
-
-      let prevSubscriptionInfo = InfoModule.getSubscriptionInfo(caller, subscriberId, eventName);
-
-      ignore do ?{
-        let subscriber = Map.get(subscribers, phash, subscriberId)!;
-        let subscriptionGroup = Map.get(subscriptions, thash, eventName)!;
-        let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
-
-        if (subscription.active) {
-          subscription.active := false;
-          subscriber.activeSubscriptions -= 1;
-        };
-
-        if (options!.purge!) {
-          Set.delete(subscriber.subscriptions, thash, eventName);
-          Map.delete(subscriptionGroup, phash, subscriberId);
-
-          if (Map.size(subscriptionGroup) == 0) Map.delete(subscriptions, thash, eventName);
-        };
-      };
-
-      let subscriptionInfo = InfoModule.getSubscriptionInfo(caller, subscriberId, eventName);
-
-      return { subscriptionInfo; prevSubscriptionInfo };
-    };
+    return { subscriptionInfo; prevSubscriptionInfo };
   };
 };

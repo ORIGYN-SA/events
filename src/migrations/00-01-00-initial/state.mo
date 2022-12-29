@@ -2,12 +2,15 @@ import Candy "mo:candy_0_1_9/types";
 import CandyUtils "mo:candy_utils_0_2_1/CandyUtils";
 import Map "mo:map_8_0_0_rc_2/Map";
 import Set "mo:map_8_0_0_rc_2/Set";
+import Principal "mo:base/Principal";
 
 module {
   public type CanisterType = {
     #Broadcast;
     #Main;
+    #PublishersIndex;
     #PublishersStore;
+    #SubscribersIndex;
     #SubscribersStore;
   };
 
@@ -84,10 +87,13 @@ module {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public type BroadcastState = {
+    mainId: Principal;
+    publishersIndexId: Principal;
+    subscribersIndexId: Principal;
+    subscribersStoreIds: Set.Set<Principal>;
     var eventId: Nat;
     var broadcastActive: Bool;
     var maxQueueSize: Nat32;
-    canisters: Map.Map<Principal, Canister>;
     events: Map.Map<Nat, Event>;
     broadcastQueue: Set.Set<Nat>;
     publicationStats: Map.Map<(Principal, Text), Stats>;
@@ -98,14 +104,32 @@ module {
     canisters: Map.Map<Principal, Canister>;
   };
 
+  public type PublishersIndexState = {
+    mainId: Principal;
+    publishersStoreIds: Set.Set<Principal>;
+    broadcastIds: Set.Set<Principal>;
+    publishersLocation: Map.Map<Principal, Principal>;
+  };
+
   public type PublishersStoreState = {
-    canisters: Map.Map<Principal, Canister>;
+    mainId: Principal;
+    publishersIndexId: Principal;
+    broadcastIds: Set.Set<Principal>;
     publishers: Map.Map<Principal, Publisher>;
     publications: Map.Map<Text, PublicationGroup>;
   };
 
+  public type SubscribersIndexState = {
+    mainId: Principal;
+    subscribersStoreIds: Set.Set<Principal>;
+    broadcastIds: Set.Set<Principal>;
+    subscribersLocation: Map.Map<Principal, Principal>;
+  };
+
   public type SubscribersStoreState = {
-    canisters: Map.Map<Principal, Canister>;
+    mainId: Principal;
+    subscribersIndexId: Principal;
+    broadcastIds: Set.Set<Principal>;
     subscribers: Map.Map<Principal, Subscriber>;
     subscriptions: Map.Map<Text, SubscriptionGroup>;
   };
@@ -113,7 +137,9 @@ module {
   public type State = {
     #Broadcast: BroadcastState;
     #Main: MainState;
+    #PublishersIndex: PublishersIndexState;
     #PublishersStore: PublishersStoreState;
+    #SubscribersIndex: SubscribersIndexState;
     #SubscribersStore: SubscribersStoreState;
   };
 };

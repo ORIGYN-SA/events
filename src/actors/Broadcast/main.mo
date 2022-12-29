@@ -8,57 +8,51 @@ import Migrations "../../migrations";
 import MigrationTypes "../../migrations/types";
 import Publish "./modules/publish";
 import Request "./modules/request";
-import Stats "./modules/stats";
 import { defaultArgs } "../../migrations";
 
 let Types = MigrationTypes.Types;
 
-shared (deployer) actor class Broadcast(canisters: [Types.SharedCanister]) {
+shared actor class Broadcast(
+  mainId: ?Principal,
+  publishersIndexId: ?Principal,
+  subscribersIndexId: ?Principal,
+  subscribersStoreIds: [Principal],
+) {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#Broadcast));
 
-  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { defaultArgs with canisters });
+  let args = { defaultArgs with mainId; publishersIndexId; subscribersIndexId; subscribersStoreIds }:MigrationTypes.Args;
+
+  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), args);
 
   let state = switch (migrationState) { case (#v0_1_0(#data(#Broadcast(state)))) state; case (_) Debug.trap(Errors.CURRENT_MIGRATION_STATE) };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  let ConfirmModule = Confirm.init(state, deployer.caller);
-
-  let InfoModule = Info.init(state, deployer.caller);
-
-  let PublishModule = Publish.init(state, deployer.caller);
-
-  let RequestModule = Request.init(state, deployer.caller);
-
-  let StatsModule = Stats.init(state, deployer.caller);
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public shared (context) func confirmEventProcessed(eventId: Nat): async Confirm.ConfirmEventResponse {
-    ConfirmModule.confirmEventProcessed(context.caller, eventId);
+  public shared (context) func confirmEventProcessed(params: Confirm.ConfirmEventParams): async Confirm.ConfirmEventResponse {
+    return Confirm.confirmEventProcessed(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func getEventInfo(publisherId: Principal, eventId: Nat): async ?Types.SharedEvent {
-    InfoModule.getEventInfo(context.caller, publisherId, eventId);
+  public shared (context) func getEventInfo(params: Info.EventInfoParams): async Info.EventInfoResponse {
+    return Info.getEventInfo(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query (context) func publish(eventName: Text, payload: Candy.CandyValue): async Publish.PublishResponse {
-    PublishModule.publish(context.caller, eventName, payload);
+  public query (context) func publish(params: Publish.PublishParams): async Publish.PublishResponse {
+    return Publish.publish(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query (context) func requestEvents(missedOnly: Bool, requests: [Request.EventsRequest]): async () {
-    RequestModule.requestEvents(context.caller, missedOnly, requests);
+  public query (context) func requestEvents(params: Request.RequestEventsParams): async Request.RequestEventsResponse {
+    return Request.requestEvents(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query func addCycles(): async () {
-    ignore Cycles.accept(Cycles.available());
+  public query func addCycles(): async Nat {
+    return Cycles.accept(Cycles.available());
   };
 };

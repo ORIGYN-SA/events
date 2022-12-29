@@ -9,33 +9,27 @@ module {
     confirmed: Bool;
   };
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  public type ConfirmEventParams = (eventId: Nat);
 
-  public func init(state: State.BroadcastState, deployer: Principal): {
-    confirmEventProcessed: (caller: Principal, eventId: Nat) -> ConfirmEventResponse;
-  } = object {
-    let { events; publicationStats; subscriptionStats } = state;
+  public type ConfirmEventFullParams = (caller: Principal, state: State.BroadcastState, params: ConfirmEventParams);
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  public func confirmEventProcessed((caller, state, (eventId)): ConfirmEventFullParams): ConfirmEventResponse {
+    var confirmed = false;
 
-    public func confirmEventProcessed(caller: Principal, eventId: Nat): ConfirmEventResponse {
-      var confirmed = false;
+    ignore do ?{
+      let event = Map.get(state.events, nhash, eventId)!;
 
-      ignore do ?{
-        let event = Map.get(events, nhash, eventId)!;
+      ignore Map.remove(event.subscribers, phash, caller)!;
 
-        ignore Map.remove(event.subscribers, phash, caller)!;
+      Set.delete(event.eventRequests, phash, caller);
 
-        Set.delete(event.eventRequests, phash, caller);
+      confirmed := true;
 
-        confirmed := true;
+      Stats.update(state.publicationStats, caller, event.eventName, { Stats.empty with numberOfConfirmations = 1:Nat64 });
 
-        Stats.update(publicationStats, caller, event.eventName, { Stats.empty with numberOfConfirmations = 1:Nat64 });
-
-        Stats.update(subscriptionStats, caller, event.eventName, { Stats.empty with numberOfConfirmations = 1:Nat64 });
-      };
-
-      return { confirmed };
+      Stats.update(state.subscriptionStats, caller, event.eventName, { Stats.empty with numberOfConfirmations = 1:Nat64 });
     };
+
+    return { confirmed };
   };
 };

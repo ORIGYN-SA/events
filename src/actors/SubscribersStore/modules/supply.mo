@@ -5,6 +5,7 @@ import Const "../../../common/const";
 import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
+import Set "mo:map/Set";
 import { nat8ToNat } "mo:prim";
 import { nhash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
@@ -16,42 +17,38 @@ module {
     listenersSeed: Nat;
   };
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  public type SubscribersBatchResponse = [(Principal, Principal)];
 
-  public func init(state: State.SubscribersStoreState, deployer: Principal): {
-    supplySubscribersBatch: (caller: Principal, eventName: Text, payload: Candy.CandyValue, options: SubscribersBatchOptions) -> [(Principal, Principal)];
-  } = object {
-    let { subscribers; subscriptions } = state;
+  public type SubscribersBatchParams = (eventName: Text, payload: Candy.CandyValue, options: SubscribersBatchOptions);
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  public type SubscribersBatchFullParams = (caller: Principal, state: State.SubscribersStoreState, params: SubscribersBatchParams);
 
-    public func supplySubscribersBatch(caller: Principal, eventName: Text, payload: Candy.CandyValue, options: SubscribersBatchOptions): [(Principal, Principal)] {
-      if (caller != deployer) Debug.trap(Errors.PERMISSION_DENIED);
+  public func supplySubscribersBatch((caller, state, (eventName, payload, options)): SubscribersBatchFullParams): SubscribersBatchResponse {
+    if (not Set.has(state.broadcastIds, phash, caller)) Debug.trap(Errors.PERMISSION_DENIED);
 
-      let result = Buffer.Buffer<(Principal, Principal)>(0);
+    let result = Buffer.Buffer<(Principal, Principal)>(0);
 
-      ignore do ?{
-        let subscriptionGroup = Map.get(subscriptions, thash, eventName)!;
+    ignore do ?{
+      let subscriptionGroup = Map.get(state.subscriptions, thash, eventName)!;
 
-        let subscriberIdsIter = if (options.from != null) Map.keysFrom(subscriptionGroup, phash, options.from!) else Map.keys(subscriptionGroup);
+      let subscriberIdsIter = if (options.from != null) Map.keysFrom(subscriptionGroup, phash, options.from!) else Map.keys(subscriptionGroup);
 
-        label subscribersBatch for (subscriberId in subscriberIdsIter) ignore do ?{
-          let subscriber = Map.get(subscribers, phash, subscriberId)!;
-          let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
+      label subscribersBatch for (subscriberId in subscriberIdsIter) ignore do ?{
+        let subscriber = Map.get(state.subscribers, phash, subscriberId)!;
+        let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
 
-          if (options.rateSeed % 100 <= nat8ToNat(subscription.rate)) {
-            if (subscription.filterPath == null or CandyUtils.get(payload, subscription.filterPath!) != #Bool(false)) {
-              let listenersSize = subscriber.confirmedListeners.size();
+        if (options.rateSeed % 100 <= nat8ToNat(subscription.rate)) {
+          if (subscription.filterPath == null or CandyUtils.get(payload, subscription.filterPath!) != #Bool(false)) {
+            let listenersSize = subscriber.confirmedListeners.size();
 
-              result.add(subscriberId, subscriber.confirmedListeners[options.listenersSeed % listenersSize]);
+            result.add(subscriberId, subscriber.confirmedListeners[options.listenersSeed % listenersSize]);
 
-              if (result.size() >= Const.SUBSCRIBERS_BATCH_SIZE) break subscribersBatch;
-            };
+            if (result.size() >= Const.SUBSCRIBERS_BATCH_SIZE) break subscribersBatch;
           };
         };
       };
-
-      return Buffer.toArray(result);
     };
+
+    return Buffer.toArray(result);
   };
 };
