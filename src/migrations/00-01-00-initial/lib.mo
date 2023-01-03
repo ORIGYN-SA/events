@@ -28,6 +28,7 @@ module {
 
       case (#Main(state)) {
         return #v0_1_0(#data(#Main({
+          var initialized = false;
           canisters = Map.new(phash);
         })));
       };

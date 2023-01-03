@@ -1,9 +1,11 @@
 import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
 import Errors "../../common/errors";
-import Index "./modules/index";
+import Location "./modules/location";
 import MigrationTypes "../../migrations/types";
 import Migrations "../../migrations";
+import Subscribe "./modules/subscribe";
+import Transfer "./modules/transfer";
 import { defaultArgs } "../../migrations";
 
 let Types = MigrationTypes.Types;
@@ -21,8 +23,28 @@ shared actor class SubscribersIndex(
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query (context) func getSubscriberLocation(params: Index.GetLocationParams): async Index.GetLocationResponse {
-    Index.getSubscriberLocation(context.caller, state, params);
+  public query (context) func getSubscriberLocation(params: Location.GetLocationParams): async Location.GetLocationResponse {
+    Location.getSubscriberLocation(context.caller, state, params);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public shared (context) func registerSubscriber(params: Subscribe.SubscriberParams): async Subscribe.SubscriberResponse {
+    return await* Subscribe.registerSubscriber(context.caller, state, params);
+  };
+
+  public shared (context) func subscribe(params: Subscribe.SubscriptionParams): async Subscribe.SubscriptionResponse {
+    return await* Subscribe.subscribe(context.caller, state, params);
+  };
+
+  public shared (context) func unsubscribe(params: Subscribe.UnsubscribeParams): async Subscribe.UnsubscribeResponse {
+    return await* Subscribe.unsubscribe(context.caller, state, params);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public shared (context) func transferSubscriptionStats(params: Transfer.TransferStatsParams): async Transfer.TransferStatsResponse {
+    return await* Transfer.transferSubscriptionStats(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

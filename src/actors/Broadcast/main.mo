@@ -1,5 +1,6 @@
-import Candy "mo:candy/types";
+import Broadcast "./modules/broadcast";
 import Confirm "./modules/confirm";
+import Const "../../common/const";
 import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
 import Errors "../../common/errors";
@@ -8,6 +9,7 @@ import Migrations "../../migrations";
 import MigrationTypes "../../migrations/types";
 import Publish "./modules/publish";
 import Request "./modules/request";
+import { setTimer } "mo:prim";
 import { defaultArgs } "../../migrations";
 
 let Types = MigrationTypes.Types;
@@ -25,6 +27,10 @@ shared actor class Broadcast(
   migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), args);
 
   let state = switch (migrationState) { case (#v0_1_0(#data(#Broadcast(state)))) state; case (_) Debug.trap(Errors.CURRENT_MIGRATION_STATE) };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  ignore setTimer(Const.RESEND_CHECK_DELAY, true, func(): async () = await* Broadcast.resendCheck(state));
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

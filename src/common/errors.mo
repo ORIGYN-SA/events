@@ -39,5 +39,7 @@ module {
 
   public let SUBSCRIBER_NOT_FOUND = "E50020: Subscriber not found";
 
-  public let NO_PUBLISHERS_STORE_CANISTERS = "E50020: No PublishersStore canisters available";
+  public let NO_PUBLISHERS_STORE_CANISTERS = "E50030: No PublishersStore canisters available";
+
+  public let NO_SUBSCRIBERS_STORE_CANISTERS = "E50040: No SubscribersStore canisters available";
 };

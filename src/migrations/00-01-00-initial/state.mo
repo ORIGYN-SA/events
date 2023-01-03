@@ -101,6 +101,7 @@ module {
   };
 
   public type MainState = {
+    var initialized: Bool;
     canisters: Map.Map<Principal, Canister>;
   };
 

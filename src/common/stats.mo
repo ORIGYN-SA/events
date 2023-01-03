@@ -1,6 +1,6 @@
 import Map "mo:map/Map";
 import { get = coalesce } "mo:base/Option";
-import { pthash } "../utils/misc";
+import { fallback; pthash } "../utils/misc";
 import { Types; State } "../migrations/types";
 
 module {
@@ -62,7 +62,7 @@ module {
 
   public func update(map: Map.Map<(Principal, Text), State.Stats>, principalId: Principal, eventName: Text, newStats: Types.SharedStats) {
     ignore Map.update<(Principal, Text), State.Stats>(map, pthash, (principalId, eventName), func(key, value) {
-      let stats = coalesce(value, build());
+      let stats = fallback(value, build);
 
       merge(stats, newStats);
 

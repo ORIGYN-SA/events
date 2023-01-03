@@ -15,7 +15,7 @@ module {
 
   public type PublisherFullParams = (caller: Principal, state: State.PublishersIndexState, params: PublisherParams);
 
-  public func registerPublisher((caller, state, (publisherId, options)): PublisherFullParams): async PublisherResponse {
+  public func registerPublisher((caller, state, (publisherId, options)): PublisherFullParams): async* PublisherResponse {
     let publisherStoreId = takeChain(
       Map.get(state.publishersLocation, phash, publisherId),
       Set.peekFront(state.publishersStoreIds),
@@ -39,7 +39,7 @@ module {
 
   public type PublicationFullParams = (caller: Principal, state: State.PublishersIndexState, params: PublicationParams);
 
-  public func registerPublication((caller, state, (publisherId, eventName, options)): PublicationFullParams): async PublicationResponse {
+  public func registerPublication((caller, state, (publisherId, eventName, options)): PublicationFullParams): async* PublicationResponse {
     let publisherStoreId = takeChain(
       Map.get(state.publishersLocation, phash, publisherId),
       Set.peekFront(state.publishersStoreIds),
@@ -63,7 +63,7 @@ module {
 
   public type RemovePublicationFullParams = (caller: Principal, state: State.PublishersIndexState, params: RemovePublicationParams);
 
-  public func removePublication((caller, state, (publisherId, eventName, options)): RemovePublicationFullParams): async RemovePublicationResponse {
+  public func removePublication((caller, state, (publisherId, eventName, options)): RemovePublicationFullParams): async* RemovePublicationResponse {
     let publisherStoreId = take(Map.get(state.publishersLocation, phash, publisherId), Errors.PUBLISHER_NOT_FOUND);
 
     let publishersStore = actor(Principal.toText(publisherStoreId)):PublishersStore.PublishersStore;
