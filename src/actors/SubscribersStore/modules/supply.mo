@@ -6,18 +6,25 @@ import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Set "mo:map/Set";
-import { nat8ToNat } "mo:prim";
+import { nat32ToNat } "mo:prim";
+import { hashInt; hashPrincipal } "mo:map/utils";
 import { nhash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
   public type SubscribersBatchOptions = {
     from: ?Principal;
-    rateSeed: Nat;
-    listenersSeed: Nat;
+    whitelist: [Principal];
+    subscriberIds: [Principal];
+    randomSeed: Nat32;
   };
 
-  public type SubscribersBatchResponse = [(Principal, Principal)];
+  public type SubscribersBatchItem = (subscriberId: Principal, listenerId: Principal);
+
+  public type SubscribersBatchResponse = {
+    subscribersBatch: [SubscribersBatchItem];
+    finalBatch: Bool;
+  };
 
   public type SubscribersBatchParams = (eventName: Text, payload: Candy.CandyValue, options: SubscribersBatchOptions);
 
@@ -26,29 +33,50 @@ module {
   public func supplySubscribersBatch((caller, state, (eventName, payload, options)): SubscribersBatchFullParams): SubscribersBatchResponse {
     if (not Set.has(state.broadcastIds, phash, caller)) Debug.trap(Errors.PERMISSION_DENIED);
 
-    let result = Buffer.Buffer<(Principal, Principal)>(0);
+    let subscribersBatch = Buffer.Buffer<SubscribersBatchItem>(0);
+    var finalBatch = false;
 
     ignore do ?{
       let subscriptionGroup = Map.get(state.subscriptions, thash, eventName)!;
 
-      let subscriberIdsIter = if (options.from != null) Map.keysFrom(subscriptionGroup, phash, options.from!) else Map.keys(subscriptionGroup);
+      let subscriberIdsIter = if (options.subscriberIds.size() > 0) {
+        options.subscriberIds.vals();
+      } else if (options.whitelist.size() > 0) {
+        options.whitelist.vals();
+      } else if (options.from != null) {
+        Map.keysFrom(subscriptionGroup, phash, options.from!);
+      } else {
+        Map.keys(subscriptionGroup);
+      };
 
-      label subscribersBatch for (subscriberId in subscriberIdsIter) ignore do ?{
+      var rateSeed = hashInt(nat32ToNat(hashPrincipal(caller) +% options.randomSeed +% 1));
+      var listenersSeed = hashInt(nat32ToNat(hashPrincipal(caller) +% options.randomSeed +% 2));
+
+      for (subscriberId in subscriberIdsIter) ignore do ?{
         let subscriber = Map.get(state.subscribers, phash, subscriberId)!;
         let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
 
-        if (options.rateSeed % 100 <= nat8ToNat(subscription.rate)) {
+        rateSeed +%= 1;
+        listenersSeed +%= 1;
+
+        if (subscription.active and not subscription.stopped and hashInt(nat32ToNat(rateSeed)) % 100 <= subscription.rate) {
           if (subscription.filterPath == null or CandyUtils.get(payload, subscription.filterPath!) != #Bool(false)) {
             let listenersSize = subscriber.confirmedListeners.size();
 
-            result.add(subscriberId, subscriber.confirmedListeners[options.listenersSeed % listenersSize]);
+            subscribersBatch.add(subscriberId, subscriber.confirmedListeners[nat32ToNat(hashInt(nat32ToNat(listenersSeed))) % listenersSize]);
 
-            if (result.size() >= Const.SUBSCRIBERS_BATCH_SIZE) break subscribersBatch;
+            if (subscribersBatch.size() >= Const.SUBSCRIBERS_BATCH_SIZE) return {
+              subscribersBatch = Buffer.toArray(subscribersBatch);
+              finalBatch = subscriberIdsIter.next() == null;
+            };
           };
         };
       };
     };
 
-    return Buffer.toArray(result);
+    return { 
+      subscribersBatch = Buffer.toArray(subscribersBatch);
+      finalBatch = true;
+    };
   };
 };

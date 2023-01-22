@@ -2,13 +2,14 @@ import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Info "./info";
 import Set "mo:map/Set";
+import { take } "../../../utils/misc";
 import { nhash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
   public type PublicationDataResponse = {
-    publisher: ?Types.SharedPublisher;
-    publication: ?Types.SharedPublication;
+    publisher: Types.SharedPublisher;
+    publication: Types.SharedPublication;
   };
 
   public type PublicationDataParams = (publisherId: Principal, eventName: Text);
@@ -21,6 +22,9 @@ module {
     let publisher = Info.getPublisherInfo(state.publishersIndexId, state, (publisherId, null));
     let publication = Info.getPublicationInfo(state.publishersIndexId, state, (publisherId, eventName, ?{ includeWhitelist = ?true }));
 
-    return { publisher; publication };
+    return {
+      publisher = take(publisher, Errors.PUBLISHER_NOT_FOUND);
+      publication = take(publication, Errors.PUBLICATION_NOT_FOUND);
+    };
   };
 };

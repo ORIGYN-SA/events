@@ -3,7 +3,6 @@ import Map "mo:map/Map";
 import Principal "mo:base/Principal";
 import Subscribe "../../SubscribersStore/modules/subscribe";
 import SubscribersStore "../../SubscribersStore/main";
-import Set "mo:map/Set";
 import { take; takeChain } "../../../utils/misc";
 import { nhash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
@@ -18,7 +17,7 @@ module {
   public func registerSubscriber((caller, state, (subscriberId, options)): SubscriberFullParams): async* SubscriberResponse {
     let subscriberStoreId = takeChain(
       Map.get(state.subscribersLocation, phash, subscriberId),
-      Set.peekFront(state.subscribersStoreIds),
+      state.subscribersStoreId,
       Errors.NO_SUBSCRIBERS_STORE_CANISTERS,
     );
 
@@ -42,7 +41,7 @@ module {
   public func subscribe((caller, state, (subscriberId, eventName, options)): SubscriptionFullParams): async* SubscriptionResponse {
     let subscriberStoreId = takeChain(
       Map.get(state.subscribersLocation, phash, subscriberId),
-      Set.peekFront(state.subscribersStoreIds),
+      state.subscribersStoreId,
       Errors.NO_SUBSCRIBERS_STORE_CANISTERS,
     );
 

@@ -28,11 +28,11 @@ module {
       for ({ subscriberId; eventName; from; to } in requests.vals()) ignore do ?{
         if (
           event.eventName == eventName and
-          (not missedOnly or Map.has(event.subscribers, phash, subscriberId)) and
+          (not missedOnly or Set.has(event.subscribers, phash, subscriberId)) and
           (from == null or event.createdAt < from!) and
           (to == null or event.createdAt > to!)
         ) {
-          Set.add(event.eventRequests, phash, subscriberId);
+          Set.add(event.sendRequests, phash, subscriberId);
           Set.add(state.broadcastQueue, nhash, event.id);
         };
       };

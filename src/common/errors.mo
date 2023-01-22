@@ -37,9 +37,15 @@ module {
 
   public let PUBLISHER_NOT_FOUND = "E50010: Publisher not found";
 
-  public let SUBSCRIBER_NOT_FOUND = "E50020: Subscriber not found";
+  public let PUBLICATION_NOT_FOUND = "E50020: Publication not found";
 
-  public let NO_PUBLISHERS_STORE_CANISTERS = "E50030: No PublishersStore canisters available";
+  public let SUBSCRIBER_NOT_FOUND = "E50030: Subscriber not found";
 
-  public let NO_SUBSCRIBERS_STORE_CANISTERS = "E50040: No SubscribersStore canisters available";
+  public let SUBSCRIPTION_NOT_FOUND = "E50040: Subscription not found";
+
+  public let EVENT_NOT_FOUND = "E50050: Event not found";
+
+  public let NO_PUBLISHERS_STORE_CANISTERS = "E50060: No PublishersStore canisters available";
+
+  public let NO_SUBSCRIBERS_STORE_CANISTERS = "E50070: No SubscribersStore canisters available";
 };

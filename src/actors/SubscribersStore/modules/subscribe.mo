@@ -92,7 +92,7 @@ module {
 
   public type SubscriptionOptions = {
     stopped: ?Bool;
-    rate: ?Nat8;
+    rate: ?Nat32;
     filter: ??Text;
   };
 
@@ -133,7 +133,7 @@ module {
       subscriberId = subscriberId;
       createdAt = time();
       stats = Stats.build();
-      var rate = 100:Nat8;
+      var rate = 100:Nat32;
       var active = false;
       var stopped = false;
       var filter = null:?Text;

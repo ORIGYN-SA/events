@@ -1,3 +1,4 @@
+import Config "./modules/config";
 import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
 import Errors "../../common/errors";
@@ -11,16 +12,18 @@ import { defaultArgs } "../../migrations";
 
 let Types = MigrationTypes.Types;
 
-shared actor class PublishersStore(
-  mainId: ?Principal,
-  publishersIndexId: ?Principal,
-  broadcastIds: [Principal],
-) {
+shared (deployer) actor class PublishersStore(publishersIndexId: ?Principal) {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#PublishersStore));
 
-  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { defaultArgs with mainId; publishersIndexId; broadcastIds });
+  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { defaultArgs with publishersIndexId; mainId = ?deployer.caller });
 
   let state = switch (migrationState) { case (#v0_1_0(#data(#PublishersStore(state)))) state; case (_) Debug.trap(Errors.CURRENT_MIGRATION_STATE) };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public query (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
+    return Config.addBroadcastIds(context.caller, state, params);
+  };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

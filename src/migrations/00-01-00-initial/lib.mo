@@ -15,10 +15,13 @@ module {
           mainId = take(args.mainId, "Argument mainId is not present");
           publishersIndexId = take(args.publishersIndexId, "Argument publishersIndexId is not present");
           subscribersIndexId = take(args.subscribersIndexId, "Argument subscribersIndexId is not present");
-          subscribersStoreIds = Set.fromIter(args.subscribersStoreIds.vals(), phash);
+          var subscribersStoreIds = Set.fromIter(args.subscribersStoreIds.vals(), phash);
           var eventId = 0;
           var broadcastActive = false;
           var maxQueueSize = 0;
+          var broadcastIndex = 1;
+          var broadcastTimerId = 0;
+          var randomSeed = 0;
           events = Map.new(nhash);
           broadcastQueue = Set.new(nhash);
           publicationStats = Map.new(pthash);
@@ -29,6 +32,7 @@ module {
       case (#Main(state)) {
         return #v0_1_0(#data(#Main({
           var initialized = false;
+          var broadcastIndex = 1;
           canisters = Map.new(phash);
         })));
       };
@@ -36,7 +40,7 @@ module {
       case (#PublishersIndex(state)) {
         return #v0_1_0(#data(#PublishersIndex({
           mainId = take(args.mainId, "Argument mainId is not present");
-          publishersStoreIds = Set.fromIter(args.publishersStoreIds.vals(), phash);
+          var publishersStoreId = null;
           broadcastIds = Set.fromIter(args.broadcastIds.vals(), phash);
           publishersLocation = Map.new(phash);
         })));
@@ -55,7 +59,7 @@ module {
       case (#SubscribersIndex(state)) {
         return #v0_1_0(#data(#SubscribersIndex({
           mainId = take(args.mainId, "Argument mainId is not present");
-          subscribersStoreIds = Set.fromIter(args.subscribersStoreIds.vals(), phash);
+          var subscribersStoreId = null;
           broadcastIds = Set.fromIter(args.broadcastIds.vals(), phash);
           subscribersLocation = Map.new(phash);
         })));

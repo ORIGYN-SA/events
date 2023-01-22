@@ -1,3 +1,4 @@
+import Config "./modules/config";
 import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
 import Errors "../../common/errors";
@@ -10,16 +11,22 @@ import { defaultArgs } "../../migrations";
 
 let Types = MigrationTypes.Types;
 
-shared actor class PublishersIndex(
-  mainId: ?Principal,
-  publishersStoreIds: [Principal],
-  broadcastIds: [Principal],
-) {
+shared (deployer) actor class PublishersIndex() {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#PublishersIndex));
 
-  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { defaultArgs with mainId; publishersStoreIds; broadcastIds });
+  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { defaultArgs with mainId = ?deployer.caller });
 
   let state = switch (migrationState) { case (#v0_1_0(#data(#PublishersIndex(state)))) state; case (_) Debug.trap(Errors.CURRENT_MIGRATION_STATE) };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public query (context) func setPublishersStoreId(params: Config.PublishersStoreIdParams): async Config.PublishersStoreIdResponse {
+    return Config.setPublishersStoreId(context.caller, state, params);
+  };
+
+  public query (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
+    return Config.addBroadcastIds(context.caller, state, params);
+  };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

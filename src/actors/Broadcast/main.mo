@@ -1,8 +1,9 @@
-import Broadcast "./modules/broadcast";
+import Config "./modules/config";
 import Confirm "./modules/confirm";
 import Const "../../common/const";
 import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
+import Deliver "./modules/deliver";
 import Errors "../../common/errors";
 import Info "./modules/info";
 import Migrations "../../migrations";
@@ -14,23 +15,22 @@ import { defaultArgs } "../../migrations";
 
 let Types = MigrationTypes.Types;
 
-shared actor class Broadcast(
-  mainId: ?Principal,
-  publishersIndexId: ?Principal,
-  subscribersIndexId: ?Principal,
-  subscribersStoreIds: [Principal],
-) {
+shared (deployer) actor class Broadcast(publishersIndexId: ?Principal, subscribersIndexId: ?Principal, subscribersStoreIds: [Principal]) {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#Broadcast));
 
-  let args = { defaultArgs with mainId; publishersIndexId; subscribersIndexId; subscribersStoreIds }:MigrationTypes.Args;
+  let args = { defaultArgs with publishersIndexId; subscribersIndexId; subscribersStoreIds; mainId = ?deployer.caller }:MigrationTypes.Args;
 
   migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), args);
 
   let state = switch (migrationState) { case (#v0_1_0(#data(#Broadcast(state)))) state; case (_) Debug.trap(Errors.CURRENT_MIGRATION_STATE) };
 
+  ignore setTimer(Const.RESEND_CHECK_DELAY, true, func(): async () { Deliver.resendCheck(state) });
+
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  ignore setTimer(Const.RESEND_CHECK_DELAY, true, func(): async () = await* Broadcast.resendCheck(state));
+  public shared (context) func addSubscribersStoreIds(params: Config.SubscribersStoreIdsParams): async Config.SubscribersStoreIdsResponse {
+    return Config.addSubscribersStoreIds(context.caller, state, params);
+  };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

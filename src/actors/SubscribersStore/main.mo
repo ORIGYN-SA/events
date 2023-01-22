@@ -1,4 +1,4 @@
-import Candy "mo:candy/types";
+import Config "./modules/config";
 import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
 import Errors "../../common/errors";
@@ -13,16 +13,18 @@ import { defaultArgs } "../../migrations";
 
 let Types = MigrationTypes.Types;
 
-shared (deployer) actor class SubscribersStore(
-  mainId: ?Principal,
-  subscribersIndexId: ?Principal,
-  broadcastIds: [Principal],
-) {
+shared (deployer) actor class SubscribersStore(subscribersIndexId: ?Principal) {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#SubscribersStore));
 
-  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { defaultArgs with mainId; subscribersIndexId; broadcastIds });
+  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { defaultArgs with subscribersIndexId; mainId = ?deployer.caller });
 
   let state = switch (migrationState) { case (#v0_1_0(#data(#SubscribersStore(state)))) state; case (_) Debug.trap(Errors.CURRENT_MIGRATION_STATE) };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public query (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
+    return Config.addBroadcastIds(context.caller, state, params);
+  };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

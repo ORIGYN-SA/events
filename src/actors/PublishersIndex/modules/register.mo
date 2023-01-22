@@ -3,7 +3,6 @@ import Map "mo:map/Map";
 import Principal "mo:base/Principal";
 import PublishersStore "../../PublishersStore/main";
 import Register "../../PublishersStore/modules/register";
-import Set "mo:map/Set";
 import { take; takeChain } "../../../utils/misc";
 import { nhash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
@@ -18,7 +17,7 @@ module {
   public func registerPublisher((caller, state, (publisherId, options)): PublisherFullParams): async* PublisherResponse {
     let publisherStoreId = takeChain(
       Map.get(state.publishersLocation, phash, publisherId),
-      Set.peekFront(state.publishersStoreIds),
+      state.publishersStoreId,
       Errors.NO_PUBLISHERS_STORE_CANISTERS,
     );
 
@@ -42,7 +41,7 @@ module {
   public func registerPublication((caller, state, (publisherId, eventName, options)): PublicationFullParams): async* PublicationResponse {
     let publisherStoreId = takeChain(
       Map.get(state.publishersLocation, phash, publisherId),
-      Set.peekFront(state.publishersStoreIds),
+      state.publishersStoreId,
       Errors.NO_PUBLISHERS_STORE_CANISTERS,
     );
 

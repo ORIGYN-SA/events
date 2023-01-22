@@ -1,3 +1,4 @@
+import Config "./modules/config";
 import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
 import Errors "../../common/errors";
@@ -10,21 +11,27 @@ import { defaultArgs } "../../migrations";
 
 let Types = MigrationTypes.Types;
 
-shared actor class SubscribersIndex(
-  mainId: ?Principal,
-  subscribersStoreIds: [Principal],
-  broadcastIds: [Principal],
-) {
+shared (deployer) actor class SubscribersIndex() {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#SubscribersIndex));
 
-  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { defaultArgs with mainId; subscribersStoreIds; broadcastIds });
+  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { defaultArgs with mainId = ?deployer.caller });
 
   let state = switch (migrationState) { case (#v0_1_0(#data(#SubscribersIndex(state)))) state; case (_) Debug.trap(Errors.CURRENT_MIGRATION_STATE) };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  public query (context) func setSubscribersStoreId(params: Config.SubscribersStoreIdParams): async Config.SubscribersStoreIdResponse {
+    return Config.setSubscribersStoreId(context.caller, state, params);
+  };
+
+  public query (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
+    return Config.addBroadcastIds(context.caller, state, params);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   public query (context) func getSubscriberLocation(params: Location.GetLocationParams): async Location.GetLocationResponse {
-    Location.getSubscriberLocation(context.caller, state, params);
+    return Location.getSubscriberLocation(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -8,6 +8,15 @@ module {
     handleEvent: (eventId: Nat, publisherId: Principal, eventName: Text, payload: Candy.CandyValue) -> async ();
   };
 
+  public type AddCyclesActor = actor {
+    addCycles: () -> async ();
+  };
+
+  public type InternetComputerActor = actor {
+    stop_canister: ({ canister_id: Principal }) -> async ();
+    delete_canister: ({ canister_id: Principal }) -> async ();
+  };
+
   public type SharedCanister = {
     canisterId: Principal;
     canisterType: State.CanisterType;
@@ -53,7 +62,7 @@ module {
     subscriberId: Principal;
     createdAt: Nat64;
     stats: SharedStats;
-    rate: Nat8;
+    rate: Nat32;
     active: Bool;
     stopped: Bool;
     filter: ?Text;
