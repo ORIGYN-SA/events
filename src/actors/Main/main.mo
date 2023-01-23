@@ -1,14 +1,14 @@
+import Config "./modules/config";
 import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
 import Errors "../../common/errors";
 import Init "./modules/init";
-import Map "mo:map/Map";
+import Manage "./modules/manage";
 import MigrationTypes "../../migrations/types";
 import Migrations "../../migrations";
 import Principal "mo:base/Principal";
 import { setTimer } "mo:prim";
 import { defaultArgs } "../../migrations";
-import { nhash; thash; phash } "mo:map/Map";
 import { Types; State } "../../migrations/types";
 
 shared (deployer) actor class Main() = this {
@@ -22,15 +22,17 @@ shared (deployer) actor class Main() = this {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func requestCycles(amount: Nat): async () {
-    if (not Map.has(state.canisters, phash, context.caller)) Debug.trap(Errors.PERMISSION_DENIED);
-
-    let canister = actor(Principal.toText(context.caller)):Types.AddCyclesActor;
-
-    Cycles.add(amount);
-
-    await canister.addCycles();
+  public shared (context) func getBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
+    return Config.getBroadcastIds(context.caller, state, params);
   };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public shared (context) func requestCycles(params: Manage.RequestCyclesParams): async Manage.RequestCyclesResponse {
+    return await* Manage.requestCycles(context.caller, state, params);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public query func addCycles(): async Nat {
     return Cycles.accept(Cycles.available());
