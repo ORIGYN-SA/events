@@ -1,7 +1,7 @@
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Principal "mo:base/Principal";
-import PublishersStore "../../PublishersStore/main";
+import PublishersStore "../../PublishersStore/interface";
 import Register "../../PublishersStore/modules/register";
 import { take; takeChain } "../../../utils/misc";
 import { nhash; thash; phash } "mo:map/Map";

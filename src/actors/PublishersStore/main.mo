@@ -10,8 +10,6 @@ import Stats "./modules/stats";
 import Supply "./modules/supply";
 import { defaultArgs } "../../migrations";
 
-let Types = MigrationTypes.Types;
-
 shared (deployer) actor class PublishersStore(publishersIndexId: ?Principal) {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#PublishersStore));
 
@@ -21,7 +19,7 @@ shared (deployer) actor class PublishersStore(publishersIndexId: ?Principal) {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
+  public shared (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
     return Config.addBroadcastIds(context.caller, state, params);
   };
 
@@ -55,7 +53,7 @@ shared (deployer) actor class PublishersStore(publishersIndexId: ?Principal) {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func consumePublicationStats(params: Stats.CosumeStatsParams): async Stats.CosumeStatsResponse {
+  public shared (context) func consumePublicationStats(params: Stats.ConsumeStatsParams): async Stats.ConsumeStatsResponse {
     Stats.consumePublicationStats(context.caller, state, params);
   };
 

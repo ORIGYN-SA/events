@@ -9,8 +9,6 @@ import Subscribe "./modules/subscribe";
 import Transfer "./modules/transfer";
 import { defaultArgs } "../../migrations";
 
-let Types = MigrationTypes.Types;
-
 shared (deployer) actor class SubscribersIndex() {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#SubscribersIndex));
 
@@ -20,11 +18,11 @@ shared (deployer) actor class SubscribersIndex() {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query (context) func setSubscribersStoreId(params: Config.SubscribersStoreIdParams): async Config.SubscribersStoreIdResponse {
+  public shared (context) func setSubscribersStoreId(params: Config.SubscribersStoreIdParams): async Config.SubscribersStoreIdResponse {
     return Config.setSubscribersStoreId(context.caller, state, params);
   };
 
-  public query (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
+  public shared (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
     return Config.addBroadcastIds(context.caller, state, params);
   };
 

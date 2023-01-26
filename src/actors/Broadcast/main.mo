@@ -13,8 +13,6 @@ import Request "./modules/request";
 import { setTimer } "mo:prim";
 import { defaultArgs } "../../migrations";
 
-let Types = MigrationTypes.Types;
-
 shared (deployer) actor class Broadcast(publishersIndexId: ?Principal, subscribersIndexId: ?Principal, subscribersStoreIds: [Principal]) {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#Broadcast));
 
@@ -40,19 +38,19 @@ shared (deployer) actor class Broadcast(publishersIndexId: ?Principal, subscribe
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func getEventInfo(params: Info.EventInfoParams): async Info.EventInfoResponse {
+  public query (context) func getEventInfo(params: Info.EventInfoParams): async Info.EventInfoResponse {
     return Info.getEventInfo(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query (context) func publish(params: Publish.PublishParams): async Publish.PublishResponse {
+  public shared (context) func publish(params: Publish.PublishParams): async Publish.PublishResponse {
     return Publish.publish(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query (context) func requestEvents(params: Request.RequestEventsParams): async Request.RequestEventsResponse {
+  public shared (context) func requestEvents(params: Request.RequestEventsParams): async Request.RequestEventsResponse {
     return Request.requestEvents(context.caller, state, params);
   };
 

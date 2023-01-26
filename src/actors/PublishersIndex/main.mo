@@ -9,8 +9,6 @@ import Register "./modules/register";
 import Transfer "./modules/transfer";
 import { defaultArgs } "../../migrations";
 
-let Types = MigrationTypes.Types;
-
 shared (deployer) actor class PublishersIndex() {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#PublishersIndex));
 
@@ -20,11 +18,11 @@ shared (deployer) actor class PublishersIndex() {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query (context) func setPublishersStoreId(params: Config.PublishersStoreIdParams): async Config.PublishersStoreIdResponse {
+  public shared (context) func setPublishersStoreId(params: Config.PublishersStoreIdParams): async Config.PublishersStoreIdResponse {
     return Config.setPublishersStoreId(context.caller, state, params);
   };
 
-  public query (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
+  public shared (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
     return Config.addBroadcastIds(context.caller, state, params);
   };
 

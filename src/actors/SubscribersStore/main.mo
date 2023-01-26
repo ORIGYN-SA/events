@@ -11,8 +11,6 @@ import Subscribe "./modules/subscribe";
 import Supply "./modules/supply";
 import { defaultArgs } "../../migrations";
 
-let Types = MigrationTypes.Types;
-
 shared (deployer) actor class SubscribersStore(subscribersIndexId: ?Principal) {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#SubscribersStore));
 
@@ -22,7 +20,7 @@ shared (deployer) actor class SubscribersStore(subscribersIndexId: ?Principal) {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public query (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
+  public shared (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
     return Config.addBroadcastIds(context.caller, state, params);
   };
 

@@ -6,13 +6,13 @@ import { nhash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
-  public type CosumeStatsResponse = ();
+  public type ConsumeStatsResponse = ();
 
-  public type CosumeStatsParams = (statsBatch: [(Principal, Text, Types.SharedStats)]);
+  public type ConsumeStatsParams = (statsBatch: [(Principal, Text, Types.SharedStats)]);
 
-  public type CosumeStatsFullParams = (caller: Principal, state: State.PublishersStoreState, params: CosumeStatsParams);
+  public type ConsumeStatsFullParams = (caller: Principal, state: State.PublishersStoreState, params: ConsumeStatsParams);
 
-  public func consumePublicationStats((caller, state, (statsBatch)): CosumeStatsFullParams): CosumeStatsResponse {
+  public func consumePublicationStats((caller, state, (statsBatch)): ConsumeStatsFullParams): ConsumeStatsResponse {
     if (caller != state.publishersIndexId) Debug.trap(Errors.PERMISSION_DENIED);
 
     for ((publisherId, eventName, stats) in statsBatch.vals()) ignore do ?{

@@ -4,9 +4,9 @@ import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Principal "mo:base/Principal";
-import PublishersIndex "../../PublishersIndex/main";
+import PublishersIndex "../../PublishersIndex/interface";
 import Stats "../../../common/stats";
-import SubscribersIndex "../../SubscribersIndex/main";
+import SubscribersIndex "../../SubscribersIndex/interface";
 import { arraySlice } "../../../utils/misc";
 import { Types; State } "../../../migrations/types";
 

@@ -1,11 +1,11 @@
 import Const "../../../common/const";
 import Map "mo:map/Map";
 import Principal "mo:base/Principal";
-import PublishersIndex "../../PublishersIndex/main";
-import PublishersStore "../../PublishersStore/main";
+import PublishersIndex "../../PublishersIndex/interface";
+import PublishersStore "../../PublishersStore/interface";
 import Set "mo:map/Set";
 import Stats "../../../common/stats";
-import SubscribersStore "../../SubscribersStore/main";
+import SubscribersStore "../../SubscribersStore/interface";
 import { setTimer; time } "mo:prim";
 import { nhash; thash; phash } "mo:map/Map";
 import { nat8ToNat64 } "../../../utils/misc";

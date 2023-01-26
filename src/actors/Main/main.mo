@@ -11,7 +11,7 @@ import { setTimer } "mo:prim";
 import { defaultArgs } "../../migrations";
 import { Types; State } "../../migrations/types";
 
-shared (deployer) actor class Main() = this {
+shared (deployer) actor class Main() {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#Main));
 
   migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), defaultArgs);
@@ -22,7 +22,7 @@ shared (deployer) actor class Main() = this {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func getBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
+  public query (context) func getBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
     return Config.getBroadcastIds(context.caller, state, params);
   };
 

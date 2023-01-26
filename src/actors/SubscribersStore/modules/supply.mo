@@ -74,7 +74,7 @@ module {
       };
     };
 
-    return { 
+    return {
       subscribersBatch = Buffer.toArray(subscribersBatch);
       finalBatch = true;
     };
