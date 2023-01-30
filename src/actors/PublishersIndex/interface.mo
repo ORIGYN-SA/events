@@ -12,6 +12,5 @@ module {
     registerPublication: shared (params: Register.PublicationParams) -> async Register.PublicationResponse;
     removePublication: shared (params: Register.RemovePublicationParams) -> async Register.RemovePublicationResponse;
     transferPublicationStats: shared (params: Transfer.TransferStatsParams) -> async Transfer.TransferStatsResponse;
-    addCycles: query () -> async Nat;
   };
 };

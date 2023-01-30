@@ -1,7 +1,6 @@
 import Config "./modules/config";
 import Confirm "./modules/confirm";
 import Const "../../common/const";
-import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
 import Deliver "./modules/deliver";
 import Errors "../../common/errors";
@@ -30,6 +29,14 @@ shared (deployer) actor class Broadcast(publishersIndexId: ?Principal, subscribe
     return Config.addSubscribersStoreIds(context.caller, state, params);
   };
 
+  public query (context) func getCanisterMetrics(params: Config.CanisterMetricsParams): async Config.CanisterMetricsResponse {
+    return Config.getCanisterMetrics(context.caller, state, params);
+  };
+
+  public shared (context) func setActiveStatus(params: Config.ActiveStatusParams): async Config.ActiveStatusResponse {
+    return Config.setActiveStatus(context.caller, state, params);
+  };
+
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public shared (context) func confirmEventProcessed(params: Confirm.ConfirmEventParams): async Confirm.ConfirmEventResponse {
@@ -52,11 +59,5 @@ shared (deployer) actor class Broadcast(publishersIndexId: ?Principal, subscribe
 
   public shared (context) func requestEvents(params: Request.RequestEventsParams): async Request.RequestEventsResponse {
     return Request.requestEvents(context.caller, state, params);
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public query func addCycles(): async Nat {
-    return Cycles.accept(Cycles.available());
   };
 };

@@ -1,5 +1,5 @@
 import Config "./modules/config";
-import Cycles "mo:base/ExperimentalCycles";
+import Const "../../common/const";
 import Debug "mo:base/Debug";
 import Errors "../../common/errors";
 import Init "./modules/init";
@@ -20,21 +20,11 @@ shared (deployer) actor class Main() {
 
   if (not state.initialized) ignore setTimer(0, false, func(): async () { await* Init.init(state) });
 
+  ignore setTimer(Const.UPDATE_METRICS_INTERVAL, true, func(): async () { await* Manage.updateCanisterMetrics(state) });
+
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public query (context) func getBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
     return Config.getBroadcastIds(context.caller, state, params);
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public shared (context) func requestCycles(params: Manage.RequestCyclesParams): async Manage.RequestCyclesResponse {
-    return await* Manage.requestCycles(context.caller, state, params);
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public query func addCycles(): async Nat {
-    return Cycles.accept(Cycles.available());
   };
 };

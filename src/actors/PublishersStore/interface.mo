@@ -15,6 +15,5 @@ module {
     removePublication: shared (params: Register.RemovePublicationParams) -> async Register.RemovePublicationResponse;
     consumePublicationStats: shared (params: Stats.ConsumeStatsParams) -> async Stats.ConsumeStatsResponse;
     supplyPublicationData: query (params: Supply.PublicationDataParams) -> async Supply.PublicationDataResponse;
-    addCycles: query () -> async Nat;
   };
 };

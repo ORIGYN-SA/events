@@ -34,6 +34,7 @@ module {
     Map.set(state.canisters, phash, publishersIndexId, {
       canisterId = publishersIndexId;
       canisterType = #PublishersIndex;
+      var active = true;
       var heapSize = 0;
       var balance = Const.CANISTER_TOP_UP_AMOUNT;
     });
@@ -49,6 +50,7 @@ module {
     Map.set(state.canisters, phash, subscribersIndexId, {
       canisterId = subscribersIndexId;
       canisterType = #SubscribersIndex;
+      var active = true;
       var heapSize = 0;
       var balance = Const.CANISTER_TOP_UP_AMOUNT;
     });
@@ -64,6 +66,7 @@ module {
     Map.set(state.canisters, phash, publishersStoreId, {
       canisterId = publishersStoreId;
       canisterType = #PublishersStore;
+      var active = true;
       var heapSize = 0;
       var balance = Const.CANISTER_TOP_UP_AMOUNT;
     });
@@ -79,6 +82,7 @@ module {
     Map.set(state.canisters, phash, subscribersStoreId, {
       canisterId = subscribersStoreId;
       canisterType = #SubscribersStore;
+      var active = true;
       var heapSize = 0;
       var balance = Const.CANISTER_TOP_UP_AMOUNT;
     });
@@ -99,6 +103,7 @@ module {
       Map.set(state.canisters, phash, broadcastId, {
         canisterId = broadcastId;
         canisterType = #Broadcast;
+        var active = true;
         var heapSize = 0;
         var balance = Const.CANISTER_TOP_UP_AMOUNT;
       });

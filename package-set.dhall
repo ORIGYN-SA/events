@@ -1,5 +1,5 @@
 [
-  { name = "base", repo = "https://github.com/dfinity/motoko-base.git", version = "moc-0.7.5", dependencies = []: List Text },
+  { name = "base", repo = "https://github.com/dfinity/motoko-base.git", version = "moc-0.7.6", dependencies = []: List Text },
   { name = "candy_0_1_9", repo = "https://github.com/aramakme/candy_library.git", version = "v0.1.9", dependencies = ["base"] },
   { name = "candy", repo = "https://github.com/aramakme/candy_library.git", version = "v0.1.9", dependencies = ["base"] },
   { name = "map_8_0_0_rc_2", repo = "https://github.com/ZhenyaUsenko/motoko-hash-map.git", version = "v8.0.0-rc.2", dependencies = ["base"] },

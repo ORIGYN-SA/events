@@ -16,6 +16,7 @@ module {
           publishersIndexId = take(args.publishersIndexId, "Argument publishersIndexId is not present");
           subscribersIndexId = take(args.subscribersIndexId, "Argument subscribersIndexId is not present");
           var subscribersStoreIds = Set.fromIter(args.subscribersStoreIds.vals(), phash);
+          var active = true;
           var eventId = 0;
           var broadcastActive = false;
           var maxQueueSize = 0;

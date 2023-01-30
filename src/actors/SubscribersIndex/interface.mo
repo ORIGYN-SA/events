@@ -12,6 +12,5 @@ module {
     subscribe: shared (params: Subscribe.SubscriptionParams) -> async Subscribe.SubscriptionResponse;
     unsubscribe: shared (params: Subscribe.UnsubscribeParams) -> async Subscribe.UnsubscribeResponse;
     transferSubscriptionStats: shared (params: Transfer.TransferStatsParams) -> async Transfer.TransferStatsResponse;
-    addCycles: query () -> async Nat;
   };
 };

@@ -18,6 +18,5 @@ module {
     subscribe: shared (params: Subscribe.SubscriptionParams) -> async Subscribe.SubscriptionResponse;
     unsubscribe: shared (params: Subscribe.UnsubscribeParams) -> async Subscribe.UnsubscribeResponse;
     supplySubscribersBatch: query (params: Supply.SubscribersBatchParams) -> async Supply.SubscribersBatchResponse;
-    addCycles: query () -> async Nat;
   };
 };

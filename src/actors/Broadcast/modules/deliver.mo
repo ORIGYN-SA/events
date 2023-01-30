@@ -1,11 +1,13 @@
 import Const "../../../common/const";
+import Debug "mo:base/Debug";
+import Error "mo:base/Error";
 import Map "mo:map/Map";
 import Principal "mo:base/Principal";
-import PublishersIndex "../../PublishersIndex/interface";
-import PublishersStore "../../PublishersStore/interface";
+import PublishersIndex "../../PublishersIndex/main";
+import PublishersStore "../../PublishersStore/main";
 import Set "mo:map/Set";
 import Stats "../../../common/stats";
-import SubscribersStore "../../SubscribersStore/interface";
+import SubscribersStore "../../SubscribersStore/main";
 import { setTimer; time } "mo:prim";
 import { nhash; thash; phash } "mo:map/Map";
 import { nat8ToNat64 } "../../../utils/misc";
@@ -87,19 +89,26 @@ module {
     event.lastSubscriberId := null;
     event.lastSubscribersStoreId := null;
     event.numberOfAttempts += 1;
+
+    Set.delete(state.broadcastQueue, nhash, event.id);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public func broadcast(state: State.BroadcastState): async* () {
     try {
-      for (eventId in Set.keys(state.broadcastQueue)) ignore do ?{
+      while (Set.size(state.broadcastQueue) > 0) ignore do ?{
+        let eventId = Set.peekFront(state.broadcastQueue)!;
+        let event = Map.get(state.events, nhash, eventId)!;
+
         await* broadcastEvent(state, Map.get(state.events, nhash, eventId)!);
       };
 
       state.broadcastTimerId := 0;
     } catch (err) {
-      state.broadcastTimerId := 0;
+      Debug.print(Error.message(err));
+
+      state.broadcastTimerId := setTimer(Const.BROADCAST_RETRY_DELAY, false, func(): async () { await* broadcast(state) });
     };
   };
 

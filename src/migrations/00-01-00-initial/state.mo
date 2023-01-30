@@ -17,6 +17,7 @@ module {
   public type Canister = {
     canisterId: Principal;
     canisterType: CanisterType;
+    var active: Bool;
     var heapSize: Nat;
     var balance: Nat;
   };
@@ -93,6 +94,7 @@ module {
     publishersIndexId: Principal;
     subscribersIndexId: Principal;
     var subscribersStoreIds: Set.Set<Principal>;
+    var active: Bool;
     var eventId: Nat;
     var maxQueueSize: Nat32;
     var broadcastIndex: Nat64;

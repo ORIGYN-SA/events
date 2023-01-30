@@ -1,5 +1,4 @@
 import Config "./modules/config";
-import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
 import Errors "../../common/errors";
 import Info "./modules/info";
@@ -20,8 +19,12 @@ shared (deployer) actor class SubscribersStore(subscribersIndexId: ?Principal) {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
+  public shared (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async ()/*Config.BroadcastIdsResponse*/ {
     return Config.addBroadcastIds(context.caller, state, params);
+  };
+
+  public query (context) func getCanisterMetrics(params: Config.CanisterMetricsParams): async Config.CanisterMetricsResponse {
+    return Config.getCanisterMetrics(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -72,11 +75,5 @@ shared (deployer) actor class SubscribersStore(subscribersIndexId: ?Principal) {
 
   public query (context) func supplySubscribersBatch(params: Supply.SubscribersBatchParams): async Supply.SubscribersBatchResponse {
     Supply.supplySubscribersBatch(context.caller, state, params);
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public query func addCycles(): async Nat {
-    return Cycles.accept(Cycles.available());
   };
 };

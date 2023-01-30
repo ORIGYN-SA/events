@@ -11,6 +11,5 @@ module {
     getEventInfo: query (params: Info.EventInfoParams) -> async Info.EventInfoResponse;
     publish: shared (params: Publish.PublishParams) -> async Publish.PublishResponse;
     requestEvents: shared (params: Request.RequestEventsParams) -> async Request.RequestEventsResponse;
-    addCycles: query () -> async Nat;
   };
 };

@@ -1,5 +1,8 @@
+import Broadcast "../../Broadcast/main";
+import Const "../../../common/const";
 import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
+import Error "mo:base/Error";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Principal "mo:base/Principal";
@@ -7,19 +10,26 @@ import { nhash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
-  public type RequestCyclesResponse = ();
+  public func updateCanisterMetrics(state: State.MainState): async* () {
+    let ic = actor("aaaaa-aa"):Types.InternetComputerActor;
 
-  public type RequestCyclesParams = (amount: Nat);
+    for (canister in Map.vals(state.canisters)) try {
+      let canisterActor = actor(Principal.toText(canister.canisterId)):Broadcast.Broadcast;
 
-  public type RequestCyclesFullParams = (caller: Principal, state: State.MainState, params: RequestCyclesParams);
+      let metrics = await canisterActor.getCanisterMetrics();
 
-  public func requestCycles((caller, state, (amount)): RequestCyclesFullParams): async* RequestCyclesResponse {
-    if (not Map.has(state.canisters, phash, caller)) Debug.trap(Errors.PERMISSION_DENIED);
+      canister.heapSize := metrics.heapSize;
+      canister.balance := metrics.balance;
 
-    let canister = actor(Principal.toText(caller)):Types.AddCyclesActor;
+      if (canister.balance < Const.CANISTER_TOP_UP_THRESHOLD) {
+        Cycles.add(Const.CANISTER_TOP_UP_AMOUNT);
 
-    Cycles.add(amount);
+        await ic.deposit_cycles({ canister_id = canister.canisterId });
 
-    await canister.addCycles();
+        canister.balance += Const.CANISTER_TOP_UP_AMOUNT;
+      };
+    } catch (err) {
+      Debug.print(Error.message(err));
+    };
   };
 };

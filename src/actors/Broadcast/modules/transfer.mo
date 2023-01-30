@@ -1,12 +1,13 @@
 import Buffer "mo:base/Buffer";
 import Const "../../../common/const";
 import Debug "mo:base/Debug";
+import Error "mo:base/Error";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Principal "mo:base/Principal";
-import PublishersIndex "../../PublishersIndex/interface";
+import PublishersIndex "../../PublishersIndex/main";
 import Stats "../../../common/stats";
-import SubscribersIndex "../../SubscribersIndex/interface";
+import SubscribersIndex "../../SubscribersIndex/main";
 import { arraySlice } "../../../utils/misc";
 import { Types; State } "../../../migrations/types";
 
@@ -28,7 +29,11 @@ module {
 
       var remainingStats = statsBatch;
 
-      try { remainingStats := await publishersIndex.transferPublicationStats(statsBatch) } catch (_) {};
+      try {
+        remainingStats := await publishersIndex.transferPublicationStats(statsBatch)
+      } catch (err) {
+        Debug.print(Error.message(err));
+      };
 
       for ((publisherId, eventName, stats) in remainingStats.vals()) {
         Stats.update(state.publicationStats, publisherId, eventName, stats);
@@ -57,7 +62,11 @@ module {
 
       var remainingStats = statsBatch;
 
-      try { remainingStats := await subscribersIndex.transferSubscriptionStats(statsBatch) } catch (_) {};
+      try {
+        remainingStats := await subscribersIndex.transferSubscriptionStats(statsBatch)
+      } catch (err) {
+        Debug.print(Error.message(err));
+      };
 
       for ((subscriberId, eventName, stats) in remainingStats.vals()) {
         Stats.update(state.subscriptionStats, subscriberId, eventName, stats);

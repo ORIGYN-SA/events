@@ -2,7 +2,7 @@ import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Principal "mo:base/Principal";
 import Subscribe "../../SubscribersStore/modules/subscribe";
-import SubscribersStore "../../SubscribersStore/interface";
+import SubscribersStore "../../SubscribersStore/main";
 import { take; takeChain } "../../../utils/misc";
 import { nhash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";

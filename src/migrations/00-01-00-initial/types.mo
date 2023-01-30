@@ -8,18 +8,17 @@ module {
     handleEvent: (eventId: Nat, publisherId: Principal, eventName: Text, payload: Candy.CandyValue) -> async ();
   };
 
-  public type AddCyclesActor = actor {
-    addCycles: () -> async ();
-  };
-
   public type InternetComputerActor = actor {
+    start_canister: ({ canister_id: Principal }) -> async ();
     stop_canister: ({ canister_id: Principal }) -> async ();
     delete_canister: ({ canister_id: Principal }) -> async ();
+    deposit_cycles: ({ canister_id: Principal }) -> async ();
   };
 
   public type SharedCanister = {
     canisterId: Principal;
     canisterType: State.CanisterType;
+    active: Bool;
     heapSize: Nat;
     balance: Nat;
   };

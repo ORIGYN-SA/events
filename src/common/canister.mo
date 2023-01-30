@@ -5,6 +5,7 @@ module {
     return {
       canisterId = canister.canisterId;
       canisterType = canister.canisterType;
+      active = canister.active;
       heapSize = canister.heapSize;
       balance = canister.balance;
     };
@@ -16,6 +17,7 @@ module {
     return {
       canisterId = canister.canisterId;
       canisterType = canister.canisterType;
+      var active = canister.active;
       var heapSize = canister.heapSize;
       var balance = canister.balance;
     };

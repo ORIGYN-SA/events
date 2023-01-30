@@ -10,7 +10,7 @@ module {
 
   public func getBroadcastIds((caller, state, ()): BroadcastIdsFullParams): BroadcastIdsResponse {
     return Map.toArrayMap<Principal, State.Canister, Principal>(state.canisters, func(id, canister) {
-      return if (canister.canisterType == #Broadcast) ?id else null;
+      return if (canister.active and canister.canisterType == #Broadcast) ?id else null;
     });
   };
 };

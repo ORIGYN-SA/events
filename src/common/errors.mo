@@ -48,4 +48,8 @@ module {
   public let NO_PUBLISHERS_STORE_CANISTERS = "E50060: No PublishersStore canisters available";
 
   public let NO_SUBSCRIBERS_STORE_CANISTERS = "E50070: No SubscribersStore canisters available";
+
+  public let INACTIVE_CANISTER = "E60010: Canister is inactive";
+
+  public let UPGRADE_IN_PROGRESS = "E60020: Upgrade in progress";
 };
