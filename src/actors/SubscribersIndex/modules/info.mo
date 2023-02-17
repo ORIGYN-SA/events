@@ -10,47 +10,47 @@ import { Types; State } "../../../migrations/types";
 module {
   public type SubscriberInfoResponse = Info.SubscriberInfoResponse;
 
-  public type SubscriberInfoParams = Info.SubscriberInfoParams;
+  public type SubscriberInfoParams = (options: ?Info.SubscriberInfoOptions);
 
   public type SubscriberInfoFullParams = (caller: Principal, state: State.SubscribersIndexState, params: SubscriberInfoParams);
 
-  public func getSubscriberInfo((caller, state, (subscriberId, options)): SubscriberInfoFullParams): async* SubscriberInfoResponse {
-    let subscriberStoreId = take(Map.get(state.subscribersLocation, phash, subscriberId), Errors.SUBSCRIBER_NOT_FOUND);
+  public func getSubscriberInfo((caller, state, (options)): SubscriberInfoFullParams): async* SubscriberInfoResponse {
+    let subscriberStoreId = take(Map.get(state.subscribersLocation, phash, caller), Errors.SUBSCRIBER_NOT_FOUND);
 
     let subscribersStore = actor(Principal.toText(subscriberStoreId)):SubscribersStore.SubscribersStore;
 
-    return await subscribersStore.getSubscriberInfo(subscriberId, options);
+    return await subscribersStore.getSubscriberInfo(caller, options);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public type SubscriptionInfoResponse = Info.SubscriptionInfoResponse;
 
-  public type SubscriptionInfoParams = Info.SubscriptionInfoParams;
+  public type SubscriptionInfoParams = (eventName: Text);
 
   public type SubscriptionInfoFullParams = (caller: Principal, state: State.SubscribersIndexState, params: SubscriptionInfoParams);
 
-  public func getSubscriptionInfo((caller, state, (subscriberId, eventName)): SubscriptionInfoFullParams): async* SubscriptionInfoResponse {
-    let subscriberStoreId = take(Map.get(state.subscribersLocation, phash, subscriberId), Errors.SUBSCRIBER_NOT_FOUND);
+  public func getSubscriptionInfo((caller, state, (eventName)): SubscriptionInfoFullParams): async* SubscriptionInfoResponse {
+    let subscriberStoreId = take(Map.get(state.subscribersLocation, phash, caller), Errors.SUBSCRIBER_NOT_FOUND);
 
     let subscribersStore = actor(Principal.toText(subscriberStoreId)):SubscribersStore.SubscribersStore;
 
-    return await subscribersStore.getSubscriptionInfo(subscriberId, eventName);
+    return await subscribersStore.getSubscriptionInfo(caller, eventName);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public type SubscriptionStatsResponse = Info.SubscriptionStatsResponse;
 
-  public type SubscriptionStatsParams = Info.SubscriptionStatsParams;
+  public type SubscriptionStatsParams = (options: ?Info.SubscriptionStatsOptions);
 
   public type SubscriptionStatsFullParams = (caller: Principal, state: State.SubscribersIndexState, params: SubscriptionStatsParams);
 
-  public func getSubscriptionStats((caller, state, (subscriberId, options)): SubscriptionStatsFullParams): async* SubscriptionStatsResponse {
-    let subscriberStoreId = take(Map.get(state.subscribersLocation, phash, subscriberId), Errors.SUBSCRIBER_NOT_FOUND);
+  public func getSubscriptionStats((caller, state, (options)): SubscriptionStatsFullParams): async* SubscriptionStatsResponse {
+    let subscriberStoreId = take(Map.get(state.subscribersLocation, phash, caller), Errors.SUBSCRIBER_NOT_FOUND);
 
     let subscribersStore = actor(Principal.toText(subscriberStoreId)):SubscribersStore.SubscribersStore;
 
-    return await subscribersStore.getSubscriptionStats(subscriberId, options);
+    return await subscribersStore.getSubscriptionStats(caller, options);
   };
 };

@@ -5,7 +5,7 @@ func handleEvent(eventId: Nat, publisherId: Principal, eventName: Text, payload:
 ```
 Any subscriber should have this method to be able to receive events. The system will not wait until a subscriber finishes processing an event. Therefore `confirmEventProcessed` method should be called at the end of a `handleEvent` method to notify the system about successful event processing. If `confirmEventProcessed` is not called, an event will be treated as failed, retry logic will kick in.
 
-# Drout Interface
+# Droute Interface
 
 ## Publish
 

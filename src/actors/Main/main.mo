@@ -65,6 +65,6 @@ shared (deployer) actor class Main() {
   };
 
   system func postupgrade() {
-    ignore setTimer(0, false, func(): async () { await* Upgrade.finishUpgrade(state.mainId, state, ()); });
+    ignore setTimer(0, false, func(): async () { await* Upgrade.finishUpgrade(state.mainId, state, ()) });
   };
 };

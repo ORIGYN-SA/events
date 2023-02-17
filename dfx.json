@@ -1,13 +1,10 @@
 {
   "canisters": {
-    "drout": {
-      "main": "src/actors/Main/main.mo",
-      "type": "motoko"
-    }
-  },
-  "defaults": {
-    "build": {
-      "packtool": "vessel sources"
+    "droute": {
+      "build": "build.sh",
+      "candid": ".dfx/local/canisters/droute/droute.did",
+      "type": "custom",
+      "wasm": ".dfx/local/canisters/droute/droute.wasm.gz"
     }
   }
 }
