@@ -21,10 +21,7 @@ module {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public type CanisterMetricsResponse = {
-    heapSize: Nat;
-    balance: Nat;
-  };
+  public type CanisterMetricsResponse = Types.CanisterMetrics;
 
   public type CanisterMetricsParams = ();
 
@@ -39,18 +36,32 @@ module {
     };
   };
 
-  
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public type ActiveStatusResponse = ();
 
-  public type ActiveStatusParams = (active: Bool);
+  public type ActiveStatusParams = (active: Bool, broadcastVersion: Nat64);
 
   public type ActiveStatusFullParams = (caller: Principal, state: State.BroadcastState, params: ActiveStatusParams);
 
-  public func setActiveStatus((caller, state, (active)): ActiveStatusFullParams): ActiveStatusResponse {
+  public func setActiveStatus((caller, state, (active, broadcastVersion)): ActiveStatusFullParams): ActiveStatusResponse {
     if (caller != state.mainId) Debug.trap(Errors.PERMISSION_DENIED);
 
     state.active := active;
+    state.broadcastVersion := broadcastVersion;
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public type BroadcastVersionResponse = ();
+
+  public type BroadcastVersionParams = (broadcastVersion: Nat64);
+
+  public type BroadcastVersionFullParams = (caller: Principal, state: State.BroadcastState, params: BroadcastVersionParams);
+
+  public func setBroadcastVersion((caller, state, (broadcastVersion)): BroadcastVersionFullParams): BroadcastVersionResponse {
+    if (caller != state.mainId) Debug.trap(Errors.PERMISSION_DENIED);
+
+    state.broadcastVersion := broadcastVersion;
   };
 };

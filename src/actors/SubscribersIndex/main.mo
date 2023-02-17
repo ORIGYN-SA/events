@@ -1,6 +1,7 @@
 import Config "./modules/config";
 import Debug "mo:base/Debug";
 import Errors "../../common/errors";
+import Info "./modules/info";
 import Location "./modules/location";
 import MigrationTypes "../../migrations/types";
 import Migrations "../../migrations";
@@ -17,16 +18,30 @@ shared (deployer) actor class SubscribersIndex() {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func setSubscribersStoreId(params: Config.SubscribersStoreIdParams): async ()/*Config.SubscribersStoreIdResponse*/ {
+  public shared (context) func setSubscribersStoreId(params: Config.SubscribersStoreIdParams): async Config.SubscribersStoreIdResponse {
     return Config.setSubscribersStoreId(context.caller, state, params);
   };
 
-  public shared (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async ()/*Config.BroadcastIdsResponse*/ {
+  public shared (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
     return Config.addBroadcastIds(context.caller, state, params);
   };
 
   public query (context) func getCanisterMetrics(params: Config.CanisterMetricsParams): async Config.CanisterMetricsResponse {
     return Config.getCanisterMetrics(context.caller, state, params);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public shared (context) func getSubscriberInfo(params: Info.SubscriberInfoParams): async Info.SubscriberInfoResponse {
+    return await* Info.getSubscriberInfo(context.caller, state, params);
+  };
+
+  public shared (context) func getSubscriptionInfo(params: Info.SubscriptionInfoParams): async Info.SubscriptionInfoResponse {
+    return await* Info.getSubscriptionInfo(context.caller, state, params);
+  };
+
+  public shared (context) func getSubscriptionStats(params: Info.SubscriptionStatsParams): async Info.SubscriptionStatsResponse {
+    return await* Info.getSubscriptionStats(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

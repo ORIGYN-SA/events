@@ -11,17 +11,28 @@ import Publish "./modules/publish";
 import Request "./modules/request";
 import { setTimer } "mo:prim";
 import { defaultArgs } "../../migrations";
+import { setBlockingTimer } "../../utils/timer";
 
-shared (deployer) actor class Broadcast(publishersIndexId: ?Principal, subscribersIndexId: ?Principal, subscribersStoreIds: [Principal]) {
+shared (deployer) actor class Broadcast(
+  publishersIndexId: ?Principal,
+  subscribersIndexId: ?Principal,
+  subscribersStoreIds: ?[Principal],
+  broadcastVersion: ?Nat64,
+) {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#Broadcast));
 
-  let args = { defaultArgs with publishersIndexId; subscribersIndexId; subscribersStoreIds; mainId = ?deployer.caller }:MigrationTypes.Args;
-
-  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), args);
+  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), {
+    defaultArgs with
+    mainId = ?deployer.caller;
+    publishersIndexId = publishersIndexId;
+    subscribersIndexId = subscribersIndexId;
+    subscribersStoreIds = subscribersStoreIds;
+    broadcastVersion = broadcastVersion;
+  });
 
   let state = switch (migrationState) { case (#v0_1_0(#data(#Broadcast(state)))) state; case (_) Debug.trap(Errors.CURRENT_MIGRATION_STATE) };
 
-  ignore setTimer(Const.RESEND_CHECK_DELAY, true, func(): async () { Deliver.resendCheck(state) });
+  ignore setBlockingTimer(Const.RESEND_CHECK_DELAY, func(): async* () { await* Deliver.resendCheck(state) });
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -37,10 +48,14 @@ shared (deployer) actor class Broadcast(publishersIndexId: ?Principal, subscribe
     return Config.setActiveStatus(context.caller, state, params);
   };
 
+  public shared (context) func setBroadcastVersion(params: Config.BroadcastVersionParams): async Config.BroadcastVersionResponse {
+    return Config.setBroadcastVersion(context.caller, state, params);
+  };
+
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func confirmEventProcessed(params: Confirm.ConfirmEventParams): async Confirm.ConfirmEventResponse {
-    return Confirm.confirmEventProcessed(context.caller, state, params);
+  public shared (context) func confirmEventReceipt(params: Confirm.ConfirmEventParams): async Confirm.ConfirmEventResponse {
+    return Confirm.confirmEventReceipt(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -52,7 +67,7 @@ shared (deployer) actor class Broadcast(publishersIndexId: ?Principal, subscribe
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public shared (context) func publish(params: Publish.PublishParams): async Publish.PublishResponse {
-    return Publish.publish(context.caller, state, params);
+    return await* Publish.publish(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

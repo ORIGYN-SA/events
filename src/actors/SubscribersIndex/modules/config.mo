@@ -35,10 +35,7 @@ module {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public type CanisterMetricsResponse = {
-    heapSize: Nat;
-    balance: Nat;
-  };
+  public type CanisterMetricsResponse = Types.CanisterMetrics;
 
   public type CanisterMetricsParams = ();
 

@@ -1,6 +1,7 @@
 import Config "./modules/config";
 import Debug "mo:base/Debug";
 import Errors "../../common/errors";
+import Info "./modules/info";
 import Location "./modules/location";
 import MigrationTypes "../../migrations/types";
 import Migrations "../../migrations";
@@ -17,16 +18,30 @@ shared (deployer) actor class PublishersIndex() {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func setPublishersStoreId(params: Config.PublishersStoreIdParams): async ()/*Config.PublishersStoreIdResponse*/ {
+  public shared (context) func setPublishersStoreId(params: Config.PublishersStoreIdParams): async Config.PublishersStoreIdResponse {
     return Config.setPublishersStoreId(context.caller, state, params);
   };
 
-  public shared (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async ()/*Config.BroadcastIdsResponse*/ {
+  public shared (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
     return Config.addBroadcastIds(context.caller, state, params);
   };
 
   public query (context) func getCanisterMetrics(params: Config.CanisterMetricsParams): async Config.CanisterMetricsResponse {
     return Config.getCanisterMetrics(context.caller, state, params);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public shared (context) func getPublisherInfo(params: Info.PublisherInfoParams): async Info.PublisherInfoResponse {
+    return await* Info.getPublisherInfo(context.caller, state, params);
+  };
+
+  public shared (context) func getPublicationInfo(params: Info.PublicationInfoParams): async Info.PublicationInfoResponse {
+    return await* Info.getPublicationInfo(context.caller, state, params);
+  };
+
+  public shared (context) func getPublicationStats(params: Info.PublicationStatsParams): async Info.PublicationStatsResponse {
+    return await* Info.getPublicationStats(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

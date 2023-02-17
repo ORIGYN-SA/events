@@ -1,6 +1,8 @@
 module {
   public let PERMISSION_DENIED = "E10010: Permission denied";
 
+  public let EMPTY_ADMINS_LIST = "E10020: Admins list is empty";
+
   public let MIGRATION_STATE = "E20010: Unexpected migration state";
 
   public let CURRENT_MIGRATION_STATE = "E20011: Unexpected current migration state";
@@ -52,4 +54,6 @@ module {
   public let INACTIVE_CANISTER = "E60010: Canister is inactive";
 
   public let UPGRADE_IN_PROGRESS = "E60020: Upgrade in progress";
+
+  public let UPGRADE_TYPE = "E60030: Cannot change upgrade type";
 };

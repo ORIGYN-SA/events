@@ -15,7 +15,7 @@ module {
 
   public type ConfirmEventFullParams = (caller: Principal, state: State.BroadcastState, params: ConfirmEventParams);
 
-  public func confirmEventProcessed((caller, state, (eventId)): ConfirmEventFullParams): ConfirmEventResponse {
+  public func confirmEventReceipt((caller, state, (eventId)): ConfirmEventFullParams): ConfirmEventResponse {
     let event = take(Map.get(state.events, nhash, eventId), Errors.EVENT_NOT_FOUND);
 
     if (not Set.has(event.subscribers, phash, caller)) return { confirmed = false };

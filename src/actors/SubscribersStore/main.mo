@@ -10,16 +10,24 @@ import Subscribe "./modules/subscribe";
 import Supply "./modules/supply";
 import { defaultArgs } "../../migrations";
 
-shared (deployer) actor class SubscribersStore(subscribersIndexId: ?Principal) {
+shared (deployer) actor class SubscribersStore(
+  subscribersIndexId: ?Principal,
+  broadcastIds: ?[Principal],
+) {
   stable var migrationState: MigrationTypes.StateList = #v0_0_0(#data(#SubscribersStore));
 
-  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), { defaultArgs with subscribersIndexId; mainId = ?deployer.caller });
+  migrationState := Migrations.migrate(migrationState, #v0_1_0(#id), {
+    defaultArgs with
+    mainId = ?deployer.caller;
+    subscribersIndexId = subscribersIndexId;
+    broadcastIds = broadcastIds;
+  });
 
   let state = switch (migrationState) { case (#v0_1_0(#data(#SubscribersStore(state)))) state; case (_) Debug.trap(Errors.CURRENT_MIGRATION_STATE) };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async ()/*Config.BroadcastIdsResponse*/ {
+  public shared (context) func addBroadcastIds(params: Config.BroadcastIdsParams): async Config.BroadcastIdsResponse {
     return Config.addBroadcastIds(context.caller, state, params);
   };
 
@@ -30,50 +38,50 @@ shared (deployer) actor class SubscribersStore(subscribersIndexId: ?Principal) {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public query (context) func getSubscriberInfo(params: Info.SubscriberInfoParams): async Info.SubscriberInfoResponse {
-    Info.getSubscriberInfo(context.caller, state, params);
+    return Info.getSubscriberInfo(context.caller, state, params);
   };
 
   public query (context) func getSubscriptionInfo(params: Info.SubscriptionInfoParams): async Info.SubscriptionInfoResponse {
-    Info.getSubscriptionInfo(context.caller, state, params);
+    return Info.getSubscriptionInfo(context.caller, state, params);
   };
 
   public query (context) func getSubscriptionStats(params: Info.SubscriptionStatsParams): async Info.SubscriptionStatsResponse {
-    Info.getSubscriptionStats(context.caller, state, params);
+    return Info.getSubscriptionStats(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public shared (context) func confirmListener(params: Listen.ConfirmListenerParams): async Listen.ConfirmListenerResponse {
-    Listen.confirmListener(context.caller, state, params);
+    return Listen.confirmListener(context.caller, state, params);
   };
 
   public shared (context) func removeListener(params: Listen.RemoveListenerParams): async Listen.RemoveListenerResponse {
-    Listen.removeListener(context.caller, state, params);
+    return Listen.removeListener(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public shared (context) func consumeSubscriptionStats(params: Stats.ConsumeStatsParams): async Stats.ConsumeStatsResponse {
-    Stats.consumeSubscriptionStats(context.caller, state, params);
+    return Stats.consumeSubscriptionStats(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public shared (context) func registerSubscriber(params: Subscribe.SubscriberParams): async Subscribe.SubscriberResponse {
-    Subscribe.registerSubscriber(context.caller, state, params);
+    return Subscribe.registerSubscriber(context.caller, state, params);
   };
 
   public shared (context) func subscribe(params: Subscribe.SubscriptionParams): async Subscribe.SubscriptionResponse {
-    Subscribe.subscribe(context.caller, state, params);
+    return Subscribe.subscribe(context.caller, state, params);
   };
 
   public shared (context) func unsubscribe(params: Subscribe.UnsubscribeParams): async Subscribe.UnsubscribeResponse {
-    Subscribe.unsubscribe(context.caller, state, params);
+    return Subscribe.unsubscribe(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public query (context) func supplySubscribersBatch(params: Supply.SubscribersBatchParams): async Supply.SubscribersBatchResponse {
-    Supply.supplySubscribersBatch(context.caller, state, params);
+    return Supply.supplySubscribersBatch(context.caller, state, params);
   };
 };

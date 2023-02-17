@@ -4,6 +4,15 @@ import CurrentState "./state";
 module {
   public let State = CurrentState;
 
+  public type CanisterMetrics = {
+    heapSize: Nat;
+    balance: Nat;
+  };
+
+  public type CanisterMetricsActor = actor {
+    getCanisterMetrics: () -> async CanisterMetrics;
+  };
+
   public type ListenerActor = actor {
     handleEvent: (eventId: Nat, publisherId: Principal, eventName: Text, payload: Candy.CandyValue) -> async ();
   };
@@ -15,9 +24,12 @@ module {
     deposit_cycles: ({ canister_id: Principal }) -> async ();
   };
 
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   public type SharedCanister = {
     canisterId: Principal;
     canisterType: State.CanisterType;
+    status: State.CanisterStatus;
     active: Bool;
     heapSize: Nat;
     balance: Nat;

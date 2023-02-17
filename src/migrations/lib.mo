@@ -1,4 +1,5 @@
 import MigrationTypes "./types";
+import Principal "mo:base/Principal";
 import V0_1_0 "./00-01-00-initial";
 
 module {
@@ -20,12 +21,14 @@ module {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public let defaultArgs: MigrationTypes.Args = {
+    deployer = null;
     mainId = null;
     publishersIndexId = null;
     subscribersIndexId = null;
-    broadcastIds = [];
-    publishersStoreIds = [];
-    subscribersStoreIds = [];
+    broadcastIds = null;
+    publishersStoreIds = null;
+    subscribersStoreIds = null;
+    broadcastVersion = null;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

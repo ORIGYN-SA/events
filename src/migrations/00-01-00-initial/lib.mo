@@ -1,7 +1,9 @@
 import Debug "mo:base/Debug";
 import Map "mo:map_8_0_0_rc_2/Map";
+import Principal "mo:base/Principal";
 import Set "mo:map_8_0_0_rc_2/Set";
 import MigrationTypes "../types";
+import { get = coalesce } "mo:base/Option";
 import { nhash; thash; phash } "mo:map_8_0_0_rc_2/Map";
 import { take; pthash } "./utils";
 
@@ -11,66 +13,118 @@ module {
 
     switch (state) {
       case (#Broadcast(state)) {
-        return #v0_1_0(#data(#Broadcast({
+        let options = {
           mainId = take(args.mainId, "Argument mainId is not present");
           publishersIndexId = take(args.publishersIndexId, "Argument publishersIndexId is not present");
           subscribersIndexId = take(args.subscribersIndexId, "Argument subscribersIndexId is not present");
-          var subscribersStoreIds = Set.fromIter(args.subscribersStoreIds.vals(), phash);
+          subscribersStoreIds = take(args.subscribersStoreIds, "Argument subscribersStoreIds is not present");
+          broadcastVersion = take(args.broadcastVersion, "Argument broadcastVersion is not present");
+        };
+
+        return #v0_1_0(#data(#Broadcast({
+          mainId = options.mainId;
+          publishersIndexId = options.publishersIndexId;
+          subscribersIndexId = options.subscribersIndexId;
+          var subscribersStoreIds = Set.fromIter(options.subscribersStoreIds.vals(), phash);
           var active = true;
           var eventId = 0;
           var broadcastActive = false;
           var maxQueueSize = 0;
-          var broadcastIndex = 1;
-          var broadcastTimerId = 0;
+          var broadcastVersion = options.broadcastVersion;
+          var broadcastQueued = false;
           var randomSeed = 0;
           events = Map.new(nhash);
           broadcastQueue = Set.new(nhash);
           publicationStats = Map.new(pthash);
+          publicationTransferStats = Map.new(pthash);
           subscriptionStats = Map.new(pthash);
+          subscriptionTransferStats = Map.new(pthash);
         })));
       };
 
+      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
       case (#Main(state)) {
+        let options = {
+          mainId = Principal.fromBlob(""); // take(args.mainId, "Argument mainId is not present");
+          deployer = take(args.deployer, "Argument deployer is not present");
+        };
+
         return #v0_1_0(#data(#Main({
+          mainId = options.mainId;
+          var publishersIndexId = Principal.fromBlob("");
+          var subscribersIndexId = Principal.fromBlob("");
           var initialized = false;
-          var broadcastIndex = 1;
+          var broadcastVersion = 1;
+          var status = #Running;
+          admins = Set.fromIter([options.deployer].vals(), phash);
           canisters = Map.new(phash);
         })));
       };
 
+      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
       case (#PublishersIndex(state)) {
-        return #v0_1_0(#data(#PublishersIndex({
+        let options = {
           mainId = take(args.mainId, "Argument mainId is not present");
+          broadcastIds = coalesce(args.broadcastIds, []);
+        };
+
+        return #v0_1_0(#data(#PublishersIndex({
+          mainId = options.mainId;
           var publishersStoreId = null;
-          broadcastIds = Set.fromIter(args.broadcastIds.vals(), phash);
+          broadcastIds = Set.fromIter(options.broadcastIds.vals(), phash);
           publishersLocation = Map.new(phash);
         })));
       };
 
+      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
       case (#PublishersStore(state)) {
-        return #v0_1_0(#data(#PublishersStore({
+        let options = {
           mainId = take(args.mainId, "Argument mainId is not present");
           publishersIndexId = take(args.publishersIndexId, "Argument publishersIndexId is not present");
-          broadcastIds = Set.fromIter(args.broadcastIds.vals(), phash);
+          broadcastIds = coalesce(args.broadcastIds, []);
+        };
+
+        return #v0_1_0(#data(#PublishersStore({
+          mainId = options.mainId;
+          publishersIndexId = options.publishersIndexId;
+          broadcastIds = Set.fromIter(options.broadcastIds.vals(), phash);
           publishers = Map.new(phash);
           publications = Map.new(thash);
         })));
       };
 
+      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
       case (#SubscribersIndex(state)) {
-        return #v0_1_0(#data(#SubscribersIndex({
+        let options = {
           mainId = take(args.mainId, "Argument mainId is not present");
+          broadcastIds = coalesce(args.broadcastIds, []);
+        };
+
+        return #v0_1_0(#data(#SubscribersIndex({
+          mainId = options.mainId;
           var subscribersStoreId = null;
-          broadcastIds = Set.fromIter(args.broadcastIds.vals(), phash);
+          broadcastIds = Set.fromIter(options.broadcastIds.vals(), phash);
           subscribersLocation = Map.new(phash);
         })));
       };
 
+      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
       case (#SubscribersStore(state)) {
-        return #v0_1_0(#data(#SubscribersStore({
+        let options = {
           mainId = take(args.mainId, "Argument mainId is not present");
           subscribersIndexId = take(args.subscribersIndexId, "Argument subscribersIndexId is not present");
-          broadcastIds = Set.fromIter(args.broadcastIds.vals(), phash);
+          broadcastIds = coalesce(args.broadcastIds, []);
+        };
+
+        return #v0_1_0(#data(#SubscribersStore({
+          mainId = options.mainId;
+          subscribersIndexId = options.subscribersIndexId;
+          broadcastIds = Set.fromIter(options.broadcastIds.vals(), phash);
           subscribers = Map.new(phash);
           subscriptions = Map.new(thash);
         })));

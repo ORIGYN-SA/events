@@ -14,9 +14,18 @@ module {
     #SubscribersStore;
   };
 
+  public type CanisterStatus = {
+    #Running;
+    #Stopped;
+    #Upgrading;
+    #Upgraded;
+    #UpgradeFailed;
+  };
+
   public type Canister = {
     canisterId: Principal;
     canisterType: CanisterType;
+    var status: CanisterStatus;
     var active: Bool;
     var heapSize: Nat;
     var balance: Nat;
@@ -97,18 +106,25 @@ module {
     var active: Bool;
     var eventId: Nat;
     var maxQueueSize: Nat32;
-    var broadcastIndex: Nat64;
-    var broadcastTimerId: Nat;
+    var broadcastVersion: Nat64;
+    var broadcastQueued: Bool;
     var randomSeed: Nat32;
     events: Map.Map<Nat, Event>;
     broadcastQueue: Set.Set<Nat>;
     publicationStats: Map.Map<(Principal, Text), Stats>;
+    publicationTransferStats: Map.Map<(Principal, Text), Stats>;
     subscriptionStats: Map.Map<(Principal, Text), Stats>;
+    subscriptionTransferStats: Map.Map<(Principal, Text), Stats>;
   };
 
   public type MainState = {
+    mainId: Principal;
+    var publishersIndexId: Principal;
+    var subscribersIndexId: Principal;
     var initialized: Bool;
-    var broadcastIndex: Nat64;
+    var broadcastVersion: Nat64;
+    var status: CanisterStatus;
+    admins: Set.Set<Principal>;
     canisters: Map.Map<Principal, Canister>;
   };
 

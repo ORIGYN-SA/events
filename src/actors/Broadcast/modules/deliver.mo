@@ -95,8 +95,8 @@ module {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public func broadcast(state: State.BroadcastState): async* () {
-    try {
+  public func broadcast(state: State.BroadcastState): async () {
+    try await async {
       while (Set.size(state.broadcastQueue) > 0) ignore do ?{
         let eventId = Set.peekFront(state.broadcastQueue)!;
         let event = Map.get(state.events, nhash, eventId)!;
@@ -104,17 +104,19 @@ module {
         await* broadcastEvent(state, Map.get(state.events, nhash, eventId)!);
       };
 
-      state.broadcastTimerId := 0;
+      state.broadcastQueued := false;
     } catch (err) {
       Debug.print(Error.message(err));
 
-      state.broadcastTimerId := setTimer(Const.BROADCAST_RETRY_DELAY, false, func(): async () { await* broadcast(state) });
+      ignore setTimer(Const.BROADCAST_RETRY_DELAY, false, func(): async () { await broadcast(state) });
+
+      state.broadcastQueued := true;
     };
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public func resendCheck(state: State.BroadcastState) {
+  public func resendCheck(state: State.BroadcastState): async* () {
     for (event in Map.vals(state.events)) {
       if (Set.size(event.subscribers) > 0 and event.nextBroadcastTime <= time()) {
         if (event.numberOfAttempts < Const.RESEND_ATTEMPTS_LIMIT) {
@@ -125,8 +127,10 @@ module {
       };
     };
 
-    if (state.broadcastTimerId == 0 and Set.size(state.broadcastQueue) > 0) {
-      state.broadcastTimerId := setTimer(0, false, func(): async () { await* broadcast(state) });
+    if (not state.broadcastQueued and Set.size(state.broadcastQueue) > 0) {
+      ignore broadcast(state);
+
+      state.broadcastQueued := true;
     };
   };
 };

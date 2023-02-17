@@ -14,13 +14,16 @@ import { Types; State } "../../../migrations/types";
 module {
   public type PublishResponse = {
     eventInfo: Types.SharedEvent;
+    broadcastVersion: Nat64;
   };
 
   public type PublishParams = (eventName: Text, payload: Candy.CandyValue);
 
   public type PublishFullParams = (caller: Principal, state: State.BroadcastState, params: PublishParams);
 
-  public func publish((caller, state, (eventName, payload)): PublishFullParams): PublishResponse {
+  public func publish((caller, state, (eventName, payload)): PublishFullParams): async* PublishResponse {
+    if (not state.active) Debug.trap(Errors.INACTIVE_CANISTER);
+
     if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
 
     let eventId = state.eventId + 1;
@@ -43,10 +46,14 @@ module {
 
     state.eventId := eventId;
 
-    if (state.broadcastTimerId == 0) {
-      state.broadcastTimerId := setTimer(0, false, func(): async () { await* Deliver.broadcast(state) });
+    if (not state.broadcastQueued) {
+      ignore Deliver.broadcast(state);
+
+      state.broadcastQueued := true;
     };
 
-    return { eventInfo = unwrap(Info.getEventInfo(state.mainId, state, (caller, eventId))) };
+    let eventInfo = unwrap(Info.getEventInfo(state.mainId, state, (caller, eventId)));
+
+    return { eventInfo; broadcastVersion = state.broadcastVersion };
   };
 };

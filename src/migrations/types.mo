@@ -9,12 +9,14 @@ module {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public type Args = {
+    deployer: ?Principal;
     mainId: ?Principal;
     publishersIndexId: ?Principal;
     subscribersIndexId: ?Principal;
-    broadcastIds: [Principal];
-    publishersStoreIds: [Principal];
-    subscribersStoreIds: [Principal];
+    broadcastIds: ?[Principal];
+    publishersStoreIds: ?[Principal];
+    subscribersStoreIds: ?[Principal];
+    broadcastVersion: ?Nat64;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
