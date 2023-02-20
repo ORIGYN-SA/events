@@ -152,7 +152,7 @@ module {
 
   public func updateCanisterMetrics(state: State.MainState): async* () {
     for (canister in Map.vals(state.canisters)) try {
-      let canisterActor = actor(Principal.toText(canister.canisterId)):Types.CanisterMetricsActor;
+      let canisterActor = actor(Principal.toText(canister.canisterId)):Broadcast.Broadcast;
 
       let metrics = await canisterActor.getCanisterMetrics();
 

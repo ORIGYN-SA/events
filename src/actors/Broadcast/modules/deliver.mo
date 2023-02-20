@@ -1,6 +1,7 @@
 import Const "../../../common/const";
 import Debug "mo:base/Debug";
 import Error "mo:base/Error";
+import Info "./info";
 import Map "mo:map/Map";
 import Principal "mo:base/Principal";
 import PublishersIndex "../../PublishersIndex/main";
@@ -10,7 +11,7 @@ import Stats "../../../common/stats";
 import SubscribersStore "../../SubscribersStore/main";
 import { setTimer; time } "mo:prim";
 import { nhash; thash; phash } "mo:map/Map";
-import { nat8ToNat64 } "../../../utils/misc";
+import { unwrap; nat8ToNat64 } "../../../utils/misc";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -22,6 +23,8 @@ module {
     let publishersStore = actor(Principal.toText(publisherLocation)):PublishersStore.PublishersStore;
 
     let { publication } = await publishersStore.supplyPublicationData(event.publisherId, event.eventName);
+
+    let eventInfo = unwrap(Info.getEventInfo(state.mainId, state, (event.publisherId, event.id)));
 
     let subscriberIds = if (event.numberOfAttempts > 0) Set.toArray(event.subscribers) else [];
 
@@ -56,7 +59,7 @@ module {
 
             Set.delete(event.sendRequests, phash, subscriberId);
 
-            ignore listenerActor.handleEvent(event.id, event.publisherId, event.eventName, event.payload);
+            ignore listenerActor.handleEvent(eventInfo);
 
             Stats.update(state.publicationStats, event.publisherId, event.eventName, {
               Stats.empty with

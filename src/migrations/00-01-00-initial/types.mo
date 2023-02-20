@@ -4,17 +4,8 @@ import CurrentState "./state";
 module {
   public let State = CurrentState;
 
-  public type CanisterMetrics = {
-    heapSize: Nat;
-    balance: Nat;
-  };
-
-  public type CanisterMetricsActor = actor {
-    getCanisterMetrics: () -> async CanisterMetrics;
-  };
-
   public type ListenerActor = actor {
-    handleEvent: (eventId: Nat, publisherId: Principal, eventName: Text, payload: Candy.CandyValue) -> async ();
+    handleEvent: (eventInfo: SharedEvent) -> async ();
   };
 
   public type InternetComputerActor = actor {
@@ -25,6 +16,11 @@ module {
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public type CanisterMetrics = {
+    heapSize: Nat;
+    balance: Nat;
+  };
 
   public type SharedCanister = {
     canisterId: Principal;
