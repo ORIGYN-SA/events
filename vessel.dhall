@@ -8,5 +8,5 @@
     "candy_utils_0_2_1",
     "candy_utils",
   ],
-  compiler = Some "0.8.1",
+  compiler = Some "0.8.2",
 }

@@ -79,7 +79,7 @@ module {
         };
 
         case (_) {
-          let { broadcastIds } = Config.getBroadcastIds(state.mainId, state, ());
+          let broadcastIds = Map.toArrayMap<Principal, State.Canister, Principal>(state.canisters, func(id, canister) = ?id);
 
           Cycles.add(Const.CANISTER_CREATE_COST + Const.CANISTER_TOP_UP_AMOUNT);
 
@@ -123,7 +123,7 @@ module {
         };
 
         case (_) {
-          let { broadcastIds } = Config.getBroadcastIds(state.mainId, state, ());
+          let broadcastIds = Map.toArrayMap<Principal, State.Canister, Principal>(state.canisters, func(id, canister) = ?id);
 
           Cycles.add(Const.CANISTER_CREATE_COST + Const.CANISTER_TOP_UP_AMOUNT);
 

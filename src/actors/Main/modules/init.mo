@@ -115,7 +115,7 @@ module {
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    let { broadcastIds } = Config.getBroadcastIds(state.mainId, state, ());
+    let broadcastIds = Map.toArrayMap<Principal, State.Canister, Principal>(state.canisters, func(id, canister) = ?id);
 
     await publishersIndex.setPublishersStoreId(?publishersStoreId);
 
