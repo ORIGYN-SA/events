@@ -1,3 +1,17 @@
+# Events System
+
+Derived from https://github.com/skilesare/droute
+
+### Purpose
+
+This system allows for canister to easily publish events to other canisters witout having to manage subscribers or to send repeated messages.
+
+### Usage
+
+To deploy a local instance, use ./scripts/lib/build_dev.sh and ./scripts/lib/deploy_dev.sh
+
+### Interface
+
 # Subscriber Interface
 
 ```ts
