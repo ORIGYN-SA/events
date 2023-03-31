@@ -1,0 +1,146 @@
+image: ubuntu
+
+stages:
+  - install
+  - upgrade
+  - reinstall
+
+.env_rules:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"
+      variables:
+        DFX_VERSION: 0.11.0
+        VESSEL_VERSION: 0.6.3
+        DYNAMIC_ENV: "prod"
+        CANISTERS_STATE: $CANISTERS_STATE_PROD
+        WALLET_ID: pan6d-5yaaa-aaaak-aabpa-cai
+        ICP_URL: https://mainnet.dfinity.network
+        DFX_IDENTITY: $DFX_IDENTITY_PROD
+        AZURE_CLIENT_ID: $AZURE_CLIENT_ID_PROD
+        AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET_PROD
+        AZURE_KEY_ID: $AZURE_KEY_ID_PROD
+        AZURE_TENANT_ID: $AZURE_TENANT_ID_PROD
+        AZURE_VAULT_ID: $AZURE_VAULT_ID_PROD
+    - if: $CI_COMMIT_BRANCH == "stage" && $CI_PIPELINE_SOURCE == "push"
+      variables:
+        DFX_VERSION: 0.11.0
+        VESSEL_VERSION: 0.6.3
+        DYNAMIC_ENV: "stage"
+        CANISTERS_STATE: $CANISTERS_STATE_STAGE
+        WALLET_ID: mf5qf-uiaaa-aaaak-qaaja-cai
+        ICP_URL: https://mainnet.dfinity.network
+        DFX_IDENTITY: $DFX_IDENTITY_STAGE
+        AZURE_CLIENT_ID: $AZURE_CLIENT_ID_STAGE
+        AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET_STAGE
+        AZURE_KEY_ID: $AZURE_KEY_ID_STAGE
+        AZURE_TENANT_ID: $AZURE_TENANT_ID_STAGE
+        AZURE_VAULT_ID: $AZURE_VAULT_ID_STAGE
+    - if: $CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"
+      variables:
+        DFX_VERSION: 0.11.0
+        VESSEL_VERSION: 0.6.4
+        DYNAMIC_ENV: "dev"
+        CANISTERS_STATE: $CANISTERS_STATE_DEV
+        WALLET_ID: wlmab-ziaaa-aaaaj-qabyq-cai
+        ICP_URL: https://mainnet.dfinity.network
+        DFX_IDENTITY: $DFX_IDENTITY_DEV
+        AZURE_CLIENT_ID: $AZURE_CLIENT_ID_DEV
+        AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET_DEV
+        AZURE_KEY_ID: $AZURE_KEY_ID_DEV
+        AZURE_TENANT_ID: $AZURE_TENANT_ID_DEV
+        AZURE_VAULT_ID: $AZURE_VAULT_ID_DEV
+.env_rules_dev:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"
+      variables:
+        DFX_VERSION: 0.11.0
+        VESSEL_VERSION: 0.6.4
+        DYNAMIC_ENV: "dev"
+        CANISTERS_STATE: $CANISTERS_STATE_DEV
+        WALLET_ID: wlmab-ziaaa-aaaaj-qabyq-cai
+        ICP_URL: https://mainnet.dfinity.network
+        DFX_IDENTITY: $DFX_IDENTITY_DEV
+        AZURE_CLIENT_ID: $AZURE_CLIENT_ID_DEV
+        AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET_DEV
+        AZURE_KEY_ID: $AZURE_KEY_ID_DEV
+        AZURE_TENANT_ID: $AZURE_TENANT_ID_DEV
+        AZURE_VAULT_ID: $AZURE_VAULT_ID_DEV
+
+.install_dependencies: &install_dependencies
+  - echo "deb http://security.ubuntu.com/ubuntu focal-security main" | tee /etc/apt/sources.list.d/focal-security.list
+  - apt update && apt install curl wget rsync libssl1.1 -y
+  - sh -ci "$(curl -sSL https://internetcomputer.org/install.sh)"
+  - wget -O /usr/local/bin/vessel https://github.com/dfinity/vessel/releases/download/v$VESSEL_VERSION/vessel-linux64
+  - chmod +x /usr/local/bin/vessel
+  - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+  - source ~/.nvm/nvm.sh
+  - nvm install $NODE_VERSION
+
+.deploy_script: &deploy_script
+  - export ACTION="$CI_JOB_STAGE"
+  - echo ${CANISTERS_STATE} > state.json
+  - ./scripts/build_$DYNAMIC_ENV.sh
+  - ./scripts/deploy_$DYNAMIC_ENV.sh
+
+install_drout_canister:
+  stage: install
+  extends:
+    - .env_rules
+  script:
+    - *install_dependencies
+    - *deploy_script
+  tags:
+    - docker
+  when: manual
+
+upgrade_drout_canister:
+  stage: upgrade
+  extends:
+    - .env_rules
+  script:
+    - *install_dependencies
+    - *deploy_script
+  tags:
+    - docker
+  when: manual
+
+reinstall_drout_canister:
+  stage: reinstall
+  extends:
+    - .env_rules
+  script:
+    - *install_dependencies
+    - *deploy_script
+  tags:
+    - docker
+  when: manual
+
+install_drout_canister_dev:
+  stage: install
+  extends:
+    - .env_rules_dev
+  script:
+    - *install_dependencies
+    - *deploy_script
+  tags:
+    - docker
+
+upgrade_drout_canister_dev:
+  stage: upgrade
+  extends:
+    - .env_rules_dev
+  script:
+    - *install_dependencies
+    - *deploy_script
+  tags:
+    - docker
+
+reinstall_drout_canister_dev:
+  stage: reinstall
+  extends:
+    - .env_rules_dev
+  script:
+    - *install_dependencies
+    - *deploy_script
+  tags:
+    - docker
