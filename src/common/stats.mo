@@ -1,5 +1,4 @@
 import Map "mo:map/Map";
-import { get = coalesce } "mo:base/Option";
 import { fallback; pthash } "../utils/misc";
 import { Types; State } "../migrations/types";
 
@@ -66,7 +65,7 @@ module {
 
       merge(stats, newStats);
 
-      return stats;
+      return ?stats;
     });
   };
 };

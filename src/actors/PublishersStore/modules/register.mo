@@ -5,10 +5,8 @@ import Info "./info";
 import Map "mo:map/Map";
 import Set "mo:map/Set";
 import Stats "../../../common/stats";
-import { get = coalesce } "mo:base/Option";
 import { time } "mo:prim";
-import { unwrap } "../../../utils/misc";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -36,14 +34,18 @@ module {
 
     let prevPublisherInfo = Info.getPublisherInfo(state.publishersIndexId, state, (publisherId, options));
 
-    let publisher = Map.update<Principal, State.Publisher>(state.publishers, phash, publisherId, func(key, value) = coalesce(value, {
-      id = publisherId;
-      createdAt = time();
-      var activePublications = 0:Nat8;
-      publications = Set.new(thash);
-    }));
+    let ?publisher = Map.update<Principal, State.Publisher>(state.publishers, phash, publisherId, func(key, value) = switch (value) {
+      case (?value) ?value;
 
-    let publisherInfo = unwrap(Info.getPublisherInfo(state.publishersIndexId, state, (publisherId, options)));
+      case (_) ?{
+        id = publisherId;
+        createdAt = time();
+        var activePublications = 0:Nat8;
+        publications = Set.new(thash);
+      };
+    });
+
+    let ?publisherInfo = Info.getPublisherInfo(state.publishersIndexId, state, (publisherId, options));
 
     return { publisher; publisherInfo; prevPublisherInfo };
   };
@@ -51,10 +53,10 @@ module {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public type PublicationOptions = {
-    whitelist: ?[Principal];
-    whitelistAdd: ?[Principal];
-    whitelistRemove: ?[Principal];
-    includeWhitelist: ?Bool;
+    subscriberWhitelist: ?[Principal];
+    subscriberWhitelistAdd: ?[Principal];
+    subscriberWhitelistRemove: ?[Principal];
+    includeSubscriberWhitelist: ?Bool;
   };
 
   public type PublicationResponse = {
@@ -83,18 +85,22 @@ module {
 
     if (Set.size(publisher.publications) > Const.PUBLICATIONS_LIMIT) Debug.trap(Errors.PUBLICATIONS_LENGTH);
 
-    let publicationGroup = Map.update<Text, State.PublicationGroup>(state.publications, thash, eventName, func(key, value) {
-      return coalesce<State.PublicationGroup>(value, Map.new(phash));
+    let ?publicationGroup = Map.update<Text, State.PublicationGroup>(state.publications, thash, eventName, func(key, value) {
+      return switch (value) { case (?value) ?value; case (_) ?Map.new(phash) };
     });
 
-    let publication = Map.update<Principal, State.Publication>(publicationGroup, phash, publisherId, func(key, value) = coalesce(value, {
-      eventName = eventName;
-      publisherId = publisherId;
-      createdAt = time();
-      stats = Stats.build();
-      var active = false;
-      whitelist = Set.new(phash);
-    }));
+    let ?publication = Map.update<Principal, State.Publication>(publicationGroup, phash, publisherId, func(key, value) = switch (value) {
+      case (?value) ?value;
+
+      case (_) ?{
+        eventName = eventName;
+        publisherId = publisherId;
+        createdAt = time();
+        stats = Stats.build();
+        var active = false;
+        subscriberWhitelist = Set.new(phash);
+      };
+    });
 
     if (not publication.active) {
       publication.active := true;
@@ -104,28 +110,28 @@ module {
     };
 
     ignore do ?{
-      if (options!.whitelist!.size() > Const.WHITELIST_LIMIT) Debug.trap(Errors.WHITELIST_REPLACE_LENGTH);
+      if (options!.subscriberWhitelist!.size() > Const.SUBSCRIBER_WHITELIST_LIMIT) Debug.trap(Errors.SUBSCRIBER_WHITELIST_REPLACE_LENGTH);
 
-      Set.clear(publication.whitelist);
+      Set.clear(publication.subscriberWhitelist);
 
-      for (principalId in options!.whitelist!.vals()) Set.add(publication.whitelist, phash, principalId);
+      for (principalId in options!.subscriberWhitelist!.vals()) Set.add(publication.subscriberWhitelist, phash, principalId);
     };
 
     ignore do ?{
-      if (options!.whitelistAdd!.size() > Const.WHITELIST_LIMIT) Debug.trap(Errors.WHITELIST_ADD_LENGTH);
+      if (options!.subscriberWhitelistAdd!.size() > Const.SUBSCRIBER_WHITELIST_LIMIT) Debug.trap(Errors.SUBSCRIBER_WHITELIST_ADD_LENGTH);
 
-      for (principalId in options!.whitelistAdd!.vals()) Set.add(publication.whitelist, phash, principalId);
+      for (principalId in options!.subscriberWhitelistAdd!.vals()) Set.add(publication.subscriberWhitelist, phash, principalId);
 
-      if (Set.size(publication.whitelist) > Const.WHITELIST_LIMIT) Debug.trap(Errors.WHITELIST_LENGTH);
+      if (Set.size(publication.subscriberWhitelist) > Const.SUBSCRIBER_WHITELIST_LIMIT) Debug.trap(Errors.SUBSCRIBER_WHITELIST_LENGTH);
     };
 
     ignore do ?{
-      if (options!.whitelistRemove!.size() > Const.WHITELIST_LIMIT) Debug.trap(Errors.WHITELIST_REMOVE_LENGTH);
+      if (options!.subscriberWhitelistRemove!.size() > Const.SUBSCRIBER_WHITELIST_LIMIT) Debug.trap(Errors.SUBSCRIBER_WHITELIST_REMOVE_LENGTH);
 
-      for (principalId in options!.whitelistRemove!.vals()) Set.delete(publication.whitelist, phash, principalId);
+      for (principalId in options!.subscriberWhitelistRemove!.vals()) Set.delete(publication.subscriberWhitelist, phash, principalId);
     };
 
-    let publicationInfo = unwrap(Info.getPublicationInfo(state.publishersIndexId, state, (publisherId, eventName, options)));
+    let ?publicationInfo = Info.getPublicationInfo(state.publishersIndexId, state, (publisherId, eventName, options));
 
     return { publication; publicationInfo; prevPublicationInfo };
   };
@@ -134,7 +140,7 @@ module {
 
   public type RemovePublicationOptions = {
     purge: ?Bool;
-    includeWhitelist: ?Bool;
+    includeSubscriberWhitelist: ?Bool;
   };
 
   public type RemovePublicationResponse = {
@@ -167,7 +173,7 @@ module {
         Set.delete(publisher.publications, thash, eventName);
         Map.delete(publicationGroup, phash, publisherId);
 
-        if (Map.size(publicationGroup) == 0) Map.delete(state.publications, thash, eventName);
+        if (Map.empty(publicationGroup)) Map.delete(state.publications, thash, eventName);
       };
     };
 

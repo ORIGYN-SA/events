@@ -5,10 +5,10 @@ import Deliver "./deliver";
 import Errors "../../../common/errors";
 import Info "./info";
 import Map "mo:map/Map";
+import Queue "./queue";
 import Set "mo:map/Set";
 import { setTimer; time } "mo:prim";
-import { unwrap } "../../../utils/misc";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -26,12 +26,11 @@ module {
 
     if (eventName.size() > Const.EVENT_NAME_LENGTH_LIMIT) Debug.trap(Errors.EVENT_NAME_LENGTH);
 
-    let eventId = state.eventId + 1;
-
-    Map.set(state.events, nhash, eventId, {
-      id = eventId;
+    let event = {
+      id = state.eventId;
       eventName = eventName;
       publisherId = caller;
+      eventType = #Public;
       payload = payload;
       createdAt = time();
       var nextBroadcastTime = time();
@@ -40,11 +39,11 @@ module {
       var lastSubscribersStoreId = null:?Principal;
       sendRequests = Set.new(phash);
       subscribers = Set.new(phash);
-    });
+    };
 
-    Set.addAfter(state.broadcastQueue, nhash, eventId, state.eventId);
+    Map.set(state.events, n64hash, state.eventId, event);
 
-    state.eventId := eventId;
+    Queue.add(state, event, #Primary);
 
     if (not state.broadcastQueued) {
       ignore Deliver.broadcast(state);
@@ -52,7 +51,9 @@ module {
       state.broadcastQueued := true;
     };
 
-    let eventInfo = unwrap(Info.getEventInfo(state.mainId, state, (caller, eventId)));
+    let ?eventInfo = Info.getEventInfo(state.mainId, state, (caller, state.eventId));
+
+    state.eventId += 1;
 
     return { eventInfo; broadcastVersion = state.broadcastVersion };
   };

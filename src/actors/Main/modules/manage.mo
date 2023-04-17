@@ -10,7 +10,7 @@ import PublishersIndex "../../PublishersIndex/main";
 import PublishersStore "../../PublishersStore/main";
 import SubscribersIndex "../../SubscribersIndex/main";
 import SubscribersStore "../../SubscribersStore/main";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -24,10 +24,10 @@ module {
         case (?(key, spareBroadcast)) {
           let broadcast = actor(Principal.toText(spareBroadcast.canisterId)):Broadcast.Broadcast;
 
+          await broadcast.setStatus({ active = true; broadcastVersion = state.broadcastVersion });
+
+          state.broadcastSynced := false;
           state.broadcastVersion += 1;
-
-          await broadcast.setActiveStatus(true, state.broadcastVersion);
-
           canister.active := false;
           spareBroadcast.active := true;
         };
@@ -37,14 +37,13 @@ module {
             return if (canister.canisterType == #SubscribersStore) ?id else null;
           });
 
-          state.broadcastVersion += 1;
-
           Cycles.add(Const.CANISTER_CREATE_COST + Const.CANISTER_TOP_UP_AMOUNT);
 
           let broadcast = await Broadcast.Broadcast(?state.publishersIndexId, ?state.subscribersIndexId, ?subscribersStoreIds, ?state.broadcastVersion);
 
           let broadcastId = Principal.fromActor(broadcast);
 
+          state.broadcastVersion += 1;
           canister.active := false;
 
           Map.set(state.canisters, phash, broadcastId, {
@@ -74,12 +73,13 @@ module {
         case (?(key, sparePublishersStore)) {
           await publishersIndex.setPublishersStoreId(?sparePublishersStore.canisterId);
 
+          state.publishersStoreSynced := false;
           canister.active := false;
           sparePublishersStore.active := true;
         };
 
         case (_) {
-          let broadcastIds = Map.toArrayMap<Principal, State.Canister, Principal>(state.canisters, func(id, canister) = ?id);
+          let { broadcastIds } = Config.getBroadcastIds(state.mainId, state, ());
 
           Cycles.add(Const.CANISTER_CREATE_COST + Const.CANISTER_TOP_UP_AMOUNT);
 
@@ -87,6 +87,7 @@ module {
 
           let publishersStoreId = Principal.fromActor(publishersStore);
 
+          state.publishersStoreSynced := false;
           canister.active := false;
 
           Map.set(state.canisters, phash, publishersStoreId, {
@@ -118,12 +119,13 @@ module {
         case (?(key, spareSubscribersStore)) {
           await subscribersIndex.setSubscribersStoreId(?spareSubscribersStore.canisterId);
 
+          state.subscribersStoreSynced := false;
           canister.active := false;
           spareSubscribersStore.active := true;
         };
 
         case (_) {
-          let broadcastIds = Map.toArrayMap<Principal, State.Canister, Principal>(state.canisters, func(id, canister) = ?id);
+          let { broadcastIds } = Config.getBroadcastIds(state.mainId, state, ());
 
           Cycles.add(Const.CANISTER_CREATE_COST + Const.CANISTER_TOP_UP_AMOUNT);
 
@@ -131,6 +133,7 @@ module {
 
           let subscribersStoreId = Principal.fromActor(subscribersStore);
 
+          state.subscribersStoreSynced := false;
           canister.active := false;
 
           Map.set(state.canisters, phash, subscribersStoreId, {
@@ -146,6 +149,38 @@ module {
         };
       };
     };
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public func syncBroadcastCanisters(state: State.MainState): async* () {
+    state.broadcastSynced := true;
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public func syncPublishersStoreCanisters(state: State.MainState): async* () {
+    state.publishersStoreSynced := true;
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public func syncSubscribersStoreCanisters(state: State.MainState): async* () {
+    let subscribersIndex = actor(Principal.toText(state.subscribersIndexId)):SubscribersIndex.SubscribersIndex;
+
+    let subscribersStoreIds = Map.toArrayMap<Principal, State.Canister, Principal>(state.canisters, func(id, canister) = ?id);
+
+    ignore do ?{
+      let (key, activeSubscribersStore) = Map.find<Principal, State.Canister>(state.canisters, func(key, item) = item.active)!;
+
+      await subscribersIndex.setSubscribersStoreId(?activeSubscribersStore.canisterId);
+    };
+
+    for (canister in Map.vals(state.canisters)) {
+
+    };
+
+    state.subscribersStoreSynced := true;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -198,6 +233,12 @@ module {
       } catch (err) {
         Debug.print(Error.message(err));
       };
+
+      if (not state.broadcastSynced) await* syncBroadcastCanisters(state);
+
+      if (not state.publishersStoreSynced) await* syncPublishersStoreCanisters(state);
+
+      if (not state.subscribersStoreSynced) await* syncSubscribersStoreCanisters(state);
     };
   };
 };

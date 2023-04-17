@@ -39,7 +39,9 @@ module {
 
   public let PUBLICATIONS_LIMIT = 500;
 
-  public let WHITELIST_LIMIT = 500;
+  public let PUBLISHER_WHITELIST_LIMIT = 500;
+
+  public let SUBSCRIBER_WHITELIST_LIMIT = 500;
 
   public let LISTENERS_LIMIT = 100;
 };

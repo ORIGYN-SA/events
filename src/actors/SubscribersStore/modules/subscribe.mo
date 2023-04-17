@@ -7,10 +7,8 @@ import Info "./info";
 import Map "mo:map/Map";
 import Set "mo:map/Set";
 import Stats "../../../common/stats";
-import { get = coalesce } "mo:base/Option";
 import { time } "mo:prim";
-import { unwrap } "../../../utils/misc";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -42,14 +40,18 @@ module {
 
     let prevSubscriberInfo = Info.getSubscriberInfo(state.subscribersIndexId, state, (subscriberId, options));
 
-    let subscriber = Map.update<Principal, State.Subscriber>(state.subscribers, phash, subscriberId, func(key, value) = coalesce(value, {
-      id = subscriberId;
-      createdAt = time();
-      var activeSubscriptions = 0:Nat8;
-      var listeners = Set.fromIter([subscriberId].vals(), phash);
-      var confirmedListeners = [subscriberId];
-      subscriptions = Set.new(thash);
-    }));
+    let ?subscriber = Map.update<Principal, State.Subscriber>(state.subscribers, phash, subscriberId, func(key, value) = switch (value) {
+      case (?value) ?value;
+
+      case (_) ?{
+        id = subscriberId;
+        createdAt = time();
+        var activeSubscriptions = 0:Nat8;
+        var listeners = Set.fromIter([subscriberId].vals(), phash);
+        var confirmedListeners = [subscriberId];
+        subscriptions = Set.new(thash);
+      };
+    });
 
     ignore do ?{
       if (options!.listeners!.size() > Const.LISTENERS_LIMIT) Debug.trap(Errors.LISTENERS_REPLACE_LENGTH);
@@ -83,7 +85,7 @@ module {
       });
     };
 
-    let subscriberInfo = unwrap(Info.getSubscriberInfo(state.subscribersIndexId, state, (subscriberId, options)));
+    let ?subscriberInfo = Info.getSubscriberInfo(state.subscribersIndexId, state, (subscriberId, options));
 
     return { subscriber; subscriberInfo; prevSubscriberInfo };
   };
@@ -94,6 +96,9 @@ module {
     stopped: ?Bool;
     rate: ?Nat32;
     filter: ??Text;
+    publisherWhitelist: ?[Principal];
+    publisherWhitelistAdd: ?[Principal];
+    publisherWhitelistRemove: ?[Principal];
   };
 
   public type SubscriptionResponse = {
@@ -124,22 +129,26 @@ module {
 
     if (Set.size(subscriber.subscriptions) > Const.SUBSCRIPTIONS_LIMIT) Debug.trap(Errors.SUBSCRIPTIONS_LENGTH);
 
-    let subscriptionGroup = Map.update<Text, State.SubscriptionGroup>(state.subscriptions, thash, eventName, func(key, value) {
-      return coalesce<State.SubscriptionGroup>(value, Map.new(phash));
+    let ?subscriptionGroup = Map.update<Text, State.SubscriptionGroup>(state.subscriptions, thash, eventName, func(key, value) {
+      return switch (value) { case (?value) ?value; case (_) ?Map.new(phash) };
     });
 
-    let subscription = Map.update<Principal, State.Subscription>(subscriptionGroup, phash, subscriberId, func(key, value) = coalesce(value, {
-      eventName = eventName;
-      subscriberId = subscriberId;
-      createdAt = time();
-      stats = Stats.build();
-      var rate = 100:Nat32;
-      var active = false;
-      var stopped = false;
-      var filter = null:?Text;
-      var filterPath = null:?CandyUtils.Path;
-      events = Set.new(nhash);
-    }));
+    let ?subscription = Map.update<Principal, State.Subscription>(subscriptionGroup, phash, subscriberId, func(key, value) = switch (value) {
+      case (?value) ?value;
+
+      case (_) ?{
+        eventName = eventName;
+        subscriberId = subscriberId;
+        createdAt = time();
+        stats = Stats.build();
+        var rate = 100:Nat32;
+        var active = false;
+        var stopped = false;
+        var filter = null:?Text;
+        var filterPath = null:?CandyUtils.Path;
+        publisherWhitelist = Set.new(phash);
+      };
+    });
 
     if (not subscription.active) {
       subscription.active := true;
@@ -148,9 +157,13 @@ module {
       if (subscriber.activeSubscriptions > Const.ACTIVE_SUBSCRIPTIONS_LIMIT) Debug.trap(Errors.ACTIVE_SUBSCRIPTIONS_LENGTH);
     };
 
-    ignore do ?{ subscription.stopped := options!.stopped! };
+    ignore do ?{
+      subscription.stopped := options!.stopped!;
+    };
 
-    ignore do ?{ subscription.rate := options!.rate! };
+    ignore do ?{
+      subscription.rate := options!.rate!;
+    };
 
     ignore do ?{
       subscription.filter := options!.filter!;
@@ -158,10 +171,32 @@ module {
 
       if (options!.filter!!.size() > Const.FILTER_LENGTH_LIMIT) Debug.trap(Errors.FILTER_LENGTH);
 
-      subscription.filterPath := ?CandyUtils.path(options!.filter!!);
+      subscription.filterPath := CandyUtils.path(options!.filter!!);
     };
 
-    let subscriptionInfo = unwrap(Info.getSubscriptionInfo(state.subscribersIndexId, state, (subscriberId, eventName)));
+    ignore do ?{
+      if (options!.publisherWhitelist!.size() > Const.PUBLISHER_WHITELIST_LIMIT) Debug.trap(Errors.PUBLISHER_WHITELIST_REPLACE_LENGTH);
+
+      Set.clear(subscription.publisherWhitelist);
+
+      for (principalId in options!.publisherWhitelist!.vals()) Set.add(subscription.publisherWhitelist, phash, principalId);
+    };
+
+    ignore do ?{
+      if (options!.publisherWhitelistAdd!.size() > Const.PUBLISHER_WHITELIST_LIMIT) Debug.trap(Errors.PUBLISHER_WHITELIST_ADD_LENGTH);
+
+      for (principalId in options!.publisherWhitelistAdd!.vals()) Set.add(subscription.publisherWhitelist, phash, principalId);
+
+      if (Set.size(subscription.publisherWhitelist) > Const.PUBLISHER_WHITELIST_LIMIT) Debug.trap(Errors.PUBLISHER_WHITELIST_LENGTH);
+    };
+
+    ignore do ?{
+      if (options!.publisherWhitelistRemove!.size() > Const.PUBLISHER_WHITELIST_LIMIT) Debug.trap(Errors.PUBLISHER_WHITELIST_REMOVE_LENGTH);
+
+      for (principalId in options!.publisherWhitelistRemove!.vals()) Set.delete(subscription.publisherWhitelist, phash, principalId);
+    };
+
+    let ?subscriptionInfo = Info.getSubscriptionInfo(state.subscribersIndexId, state, (subscriberId, eventName));
 
     return { subscription; subscriptionInfo; prevSubscriptionInfo };
   };
@@ -202,7 +237,7 @@ module {
         Set.delete(subscriber.subscriptions, thash, eventName);
         Map.delete(subscriptionGroup, phash, subscriberId);
 
-        if (Map.size(subscriptionGroup) == 0) Map.delete(state.subscriptions, thash, eventName);
+        if (Map.empty(subscriptionGroup)) Map.delete(state.subscriptions, thash, eventName);
       };
     };
 

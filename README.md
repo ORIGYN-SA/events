@@ -16,17 +16,17 @@ Registers a new publication or updates an existing one. Activates inactive publi
 
 Options (variants array)
 
-- `#whitelist`: [Principal]
+- `#subscriberWhitelist`: [Principal]
 
-Specify canisters that will be able to receive your publication's events. Replaces the previous whitelist. By default, everyone can receive events (whitelist is empty).
+Specify canisters that will be able to receive your publication's events. Replaces the previous subscriberWhitelist. By default, everyone can receive events (subscriberWhitelist is empty).
 
-- `#whitelistAdd`: [Principal]
+- `#subscriberWhitelistAdd`: [Principal]
 
-Add canisters to the whitelist.
+Add canisters to the subscriberWhitelist.
 
-- `#whitelistRemove`: [Principal]
+- `#subscriberWhitelistRemove`: [Principal]
 
-Remove canisters from the whitelist.
+Remove canisters from the subscriberWhitelist.
 
 ---
 

@@ -1,9 +1,9 @@
+import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Set "mo:map/Set";
 import Stats "../../../common/stats";
-import { take } "../../../utils/misc";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -11,12 +11,12 @@ module {
     confirmed: Bool;
   };
 
-  public type ConfirmEventParams = (eventId: Nat);
+  public type ConfirmEventParams = (eventId: Nat64);
 
   public type ConfirmEventFullParams = (caller: Principal, state: State.BroadcastState, params: ConfirmEventParams);
 
   public func confirmEventReceipt((caller, state, (eventId)): ConfirmEventFullParams): ConfirmEventResponse {
-    let event = take(Map.get(state.events, nhash, eventId), Errors.EVENT_NOT_FOUND);
+    let ?event = Map.get(state.events, n64hash, eventId) else Debug.trap(Errors.EVENT_NOT_FOUND);
 
     if (not Set.has(event.subscribers, phash, caller)) return { confirmed = false };
 

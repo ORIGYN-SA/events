@@ -44,12 +44,8 @@ shared (deployer) actor class Broadcast(
     return Config.getCanisterMetrics(context.caller, state, params);
   };
 
-  public shared (context) func setActiveStatus(params: Config.ActiveStatusParams): async Config.ActiveStatusResponse {
-    return Config.setActiveStatus(context.caller, state, params);
-  };
-
-  public shared (context) func setBroadcastVersion(params: Config.BroadcastVersionParams): async Config.BroadcastVersionResponse {
-    return Config.setBroadcastVersion(context.caller, state, params);
+  public shared (context) func setStatus(params: Config.StatusParams): async Config.StatusResponse {
+    return Config.setStatus(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

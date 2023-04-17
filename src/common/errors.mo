@@ -22,18 +22,30 @@ module {
   public let SUBSCRIPTIONS_LENGTH = "E30040: Subscriptions limit reached";
 
   public let ACTIVE_SUBSCRIPTIONS_LENGTH = "E30041: Active subscriptions limit reached";
+  
+  public let SUBSCRIPTIONS_OPTION_LENGTH = "E31042: EventNames option length limit reached";
 
-  public let WHITELIST_LENGTH = "E30050: Listeners length limit reached";
+  public let PUBLICATIONS_LENGTH = "E30050: Publications limit reached";
 
-  public let WHITELIST_REPLACE_LENGTH = "E31051: Listeners option length limit reached";
+  public let ACTIVE_PUBLICATIONS_LENGTH = "E30051: Active publications limit reached";
+  
+  public let PUBLICATIONS_OPTION_LENGTH = "E31052: EventNames option length limit reached";
 
-  public let WHITELIST_ADD_LENGTH = "E31052: ListenersAdd option length limit reached";
+  public let PUBLISHER_WHITELIST_LENGTH = "E30060: Subscriber witelist length limit reached";
 
-  public let WHITELIST_REMOVE_LENGTH = "E31053: ListenersRemove option length limit reached";
+  public let PUBLISHER_WHITELIST_REPLACE_LENGTH = "E31061: PublisherWitelist option length limit reached";
 
-  public let PUBLICATIONS_LENGTH = "E30060: Publications limit reached";
+  public let PUBLISHER_WHITELIST_ADD_LENGTH = "E31062: PublisherWitelistAdd option length limit reached";
 
-  public let ACTIVE_PUBLICATIONS_LENGTH = "E30061: Active publications limit reached";
+  public let PUBLISHER_WHITELIST_REMOVE_LENGTH = "E31063: PublisherWitelistRemove option length limit reached";
+
+  public let SUBSCRIBER_WHITELIST_LENGTH = "E30070: Subscriber witelist length limit reached";
+
+  public let SUBSCRIBER_WHITELIST_REPLACE_LENGTH = "E31071: SubscriberWhitelist option length limit reached";
+
+  public let SUBSCRIBER_WHITELIST_ADD_LENGTH = "E31072: SubscriberWhitelistAdd option length limit reached";
+
+  public let SUBSCRIBER_WHITELIST_REMOVE_LENGTH = "E31073: SubscriberWhitelistRemove option length limit reached";
 
   public let SELF_LISTENER = "E40010: Can not confirm self as listener";
 

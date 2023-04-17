@@ -7,14 +7,16 @@ import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Set "mo:map/Set";
 import { nat32ToNat } "mo:prim";
-import { hashInt; hashPrincipal } "mo:map/utils";
-import { nhash; thash; phash } "mo:map/Map";
+import { hashNat32; hashPrincipal } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
   public type SubscribersBatchOptions = {
     from: ?Principal;
-    whitelist: [Principal];
+    eventType: State.EventType;
+    publisherId: Principal;
+    subscriberWhitelist: [Principal];
     subscriberIds: [Principal];
     randomSeed: Nat32;
   };
@@ -33,50 +35,42 @@ module {
   public func supplySubscribersBatch((caller, state, (eventName, payload, options)): SubscribersBatchFullParams): SubscribersBatchResponse {
     if (not Set.has(state.broadcastIds, phash, caller)) Debug.trap(Errors.PERMISSION_DENIED);
 
+    let ?subscriptionGroup = Map.get(state.subscriptions, thash, eventName) else return { subscribersBatch = []; finalBatch = true };
+
+    let subscriberIdsIter = if (options.subscriberIds.size() > 0) {
+      options.subscriberIds.vals();
+    } else if (options.subscriberWhitelist.size() > 0) {
+      options.subscriberWhitelist.vals();
+    } else {
+      Map.keysFrom(subscriptionGroup, phash, options.from);
+    };
+
     let subscribersBatch = Buffer.Buffer<SubscribersBatchItem>(0);
-    var finalBatch = false;
+    var rateSeed = hashNat32(hashPrincipal(caller) +% options.randomSeed +% 1);
+    var listenersSeed = hashNat32(hashPrincipal(caller) +% options.randomSeed +% 2);
 
-    ignore do ?{
-      let subscriptionGroup = Map.get(state.subscriptions, thash, eventName)!;
+    for (subscriberId in subscriberIdsIter) label iteration {
+      let ?subscriber = Map.get(state.subscribers, phash, subscriberId) else break iteration;
+      let ?subscription = Map.get(subscriptionGroup, phash, subscriberId) else break iteration;
+      let listenersSize = subscriber.confirmedListeners.size();
 
-      let subscriberIdsIter = if (options.subscriberIds.size() > 0) {
-        options.subscriberIds.vals();
-      } else if (options.whitelist.size() > 0) {
-        options.whitelist.vals();
-      } else if (options.from != null) {
-        Map.keysFrom(subscriptionGroup, phash, options.from!);
-      } else {
-        Map.keys(subscriptionGroup);
-      };
+      rateSeed +%= 1;
+      listenersSeed +%= 1;
 
-      var rateSeed = hashInt(nat32ToNat(hashPrincipal(caller) +% options.randomSeed +% 1));
-      var listenersSeed = hashInt(nat32ToNat(hashPrincipal(caller) +% options.randomSeed +% 2));
+      if (not subscription.active or subscription.stopped or hashNat32(rateSeed) % 100 > subscription.rate) break iteration;
 
-      for (subscriberId in subscriberIdsIter) ignore do ?{
-        let subscriber = Map.get(state.subscribers, phash, subscriberId)!;
-        let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
+      if (subscription.filterPath != null and CandyUtils.get(payload, subscription.filterPath) == #Bool(false)) break iteration;
 
-        rateSeed +%= 1;
-        listenersSeed +%= 1;
+      if (options.eventType != #System and Set.contains(subscription.publisherWhitelist, phash, options.publisherId) == ?false) break iteration;
 
-        if (subscription.active and not subscription.stopped and hashInt(nat32ToNat(rateSeed)) % 100 <= subscription.rate) {
-          if (subscription.filterPath == null or CandyUtils.get(payload, subscription.filterPath!) != #Bool(false)) {
-            let listenersSize = subscriber.confirmedListeners.size();
+      subscribersBatch.add(subscriberId, subscriber.confirmedListeners[nat32ToNat(hashNat32(listenersSeed)) % listenersSize]);
 
-            subscribersBatch.add(subscriberId, subscriber.confirmedListeners[nat32ToNat(hashInt(nat32ToNat(listenersSeed))) % listenersSize]);
-
-            if (subscribersBatch.size() >= Const.SUBSCRIBERS_BATCH_SIZE) return {
-              subscribersBatch = Buffer.toArray(subscribersBatch);
-              finalBatch = subscriberIdsIter.next() == null;
-            };
-          };
-        };
+      if (subscribersBatch.size() >= Const.SUBSCRIBERS_BATCH_SIZE) return {
+        subscribersBatch = Buffer.toArray(subscribersBatch);
+        finalBatch = subscriberIdsIter.next() == null;
       };
     };
 
-    return {
-      subscribersBatch = Buffer.toArray(subscribersBatch);
-      finalBatch = true;
-    };
+    return { subscribersBatch = Buffer.toArray(subscribersBatch); finalBatch = true };
   };
 };

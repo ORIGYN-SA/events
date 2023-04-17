@@ -1,7 +1,7 @@
 import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Set "mo:map/Set";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -44,6 +44,6 @@ module {
 
     Set.delete(state.admins, phash, adminId);
 
-    if (Set.size(state.admins) == 0) Debug.trap(Errors.EMPTY_ADMINS_LIST);
+    if (Set.empty(state.admins)) Debug.trap(Errors.EMPTY_ADMINS_LIST);
   };
 };

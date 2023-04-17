@@ -1,11 +1,14 @@
 #!/bin/sh
 
-mkdir -p .dfx/local/canisters/droute
+CANISTER_NAME=droute
+ENTRY_POINT=src/actors/Main/main.mo
 
-$(vessel bin)/moc src/actors/Main/main.mo -o .dfx/local/canisters/droute/droute.wasm \
+mkdir -p .dfx/local/canisters/${CANISTER_NAME}
+
+$(vessel bin)/moc ${ENTRY_POINT} -o .dfx/local/canisters/${CANISTER_NAME}/${CANISTER_NAME}.wasm \
 -c --debug --idl --stable-types --public-metadata candid:service --actor-idl .dfx/local/canisters/idl/ \
---actor-alias droute $(dfx canister id droute) $(vessel sources)
+--actor-alias ${CANISTER_NAME} $(dfx canister id ${CANISTER_NAME}) $(vessel sources)
 
-ic-wasm .dfx/local/canisters/droute/droute.wasm -o .dfx/local/canisters/droute/droute.wasm shrink
+ic-wasm .dfx/local/canisters/${CANISTER_NAME}/${CANISTER_NAME}.wasm -o .dfx/local/canisters/${CANISTER_NAME}/${CANISTER_NAME}.wasm shrink
 
-gzip -f -9 .dfx/local/canisters/droute/droute.wasm
+gzip -f -9 .dfx/local/canisters/${CANISTER_NAME}/${CANISTER_NAME}.wasm

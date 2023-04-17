@@ -1,10 +1,15 @@
 import Candy "mo:candy_0_1_9/types";
-import CandyUtils "mo:candy_utils_0_2_1/CandyUtils";
-import Map "mo:map_8_0_0_rc_2/Map";
-import Set "mo:map_8_0_0_rc_2/Set";
+import CandyUtils "mo:candy_utils_0_2_2/CandyUtils";
+import Map "mo:map_8_1_0/Map";
+import Set "mo:map_8_1_0/Set";
 import Principal "mo:base/Principal";
 
 module {
+  public type EventType = {
+    #Public;
+    #System;
+  };
+
   public type CanisterType = {
     #Broadcast;
     #Main;
@@ -22,6 +27,16 @@ module {
     #UpgradeFailed;
   };
 
+  public type Stats = {
+    var numberOfEvents: Nat64;
+    var numberOfNotifications: Nat64;
+    var numberOfResendNotifications: Nat64;
+    var numberOfRequestedNotifications: Nat64;
+    var numberOfConfirmations: Nat64;
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   public type Canister = {
     canisterId: Principal;
     canisterType: CanisterType;
@@ -29,16 +44,6 @@ module {
     var active: Bool;
     var heapSize: Nat;
     var balance: Nat;
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public type Stats = {
-    var numberOfEvents: Nat64;
-    var numberOfNotifications: Nat64;
-    var numberOfResendNotifications: Nat64;
-    var numberOfRequestedNotifications: Nat64;
-    var numberOfConfirmations: Nat64;
   };
 
   public type Publisher = {
@@ -54,7 +59,7 @@ module {
     createdAt: Nat64;
     stats: Stats;
     var active: Bool;
-    whitelist: Set.Set<Principal>;
+    subscriberWhitelist: Set.Set<Principal>;
   };
 
   public type Subscriber = {
@@ -76,12 +81,14 @@ module {
     var stopped: Bool;
     var filter: ?Text;
     var filterPath: ?CandyUtils.Path;
+    publisherWhitelist: Set.Set<Principal>;
   };
 
   public type Event = {
-    id: Nat;
+    id: Nat64;
     eventName: Text;
     publisherId: Principal;
+    eventType: EventType;
     payload: Candy.CandyValue;
     createdAt: Nat64;
     var nextBroadcastTime: Nat64;
@@ -96,6 +103,8 @@ module {
 
   public type SubscriptionGroup = Map.Map<Principal, Subscription>;
 
+  public type BroadcastGroup = Set.Set<Nat64>;
+
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public type BroadcastState = {
@@ -104,13 +113,17 @@ module {
     subscribersIndexId: Principal;
     var subscribersStoreIds: Set.Set<Principal>;
     var active: Bool;
-    var eventId: Nat;
+    var eventId: Nat64;
     var maxQueueSize: Nat32;
     var broadcastVersion: Nat64;
     var broadcastQueued: Bool;
     var randomSeed: Nat32;
-    events: Map.Map<Nat, Event>;
-    broadcastQueue: Set.Set<Nat>;
+    events: Map.Map<Nat64, Event>;
+    queuedEvents: Map.Map<Nat64, Nat32>;
+    primaryBroadcastQueue: Map.Map<Nat32, BroadcastGroup>;
+    secondaryBroadcastQueue: Map.Map<Nat32, BroadcastGroup>;
+    primaryBroadcastGroups: Map.Map<Principal, Nat32>;
+    secondaryBroadcastGroups: Map.Map<Principal, Nat32>;
     publicationStats: Map.Map<(Principal, Text), Stats>;
     publicationTransferStats: Map.Map<(Principal, Text), Stats>;
     subscriptionStats: Map.Map<(Principal, Text), Stats>;
@@ -122,6 +135,9 @@ module {
     var publishersIndexId: Principal;
     var subscribersIndexId: Principal;
     var initialized: Bool;
+    var broadcastSynced: Bool;
+    var publishersStoreSynced: Bool;
+    var subscribersStoreSynced: Bool;
     var broadcastVersion: Nat64;
     var status: CanisterStatus;
     admins: Set.Set<Principal>;

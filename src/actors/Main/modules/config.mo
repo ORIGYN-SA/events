@@ -13,7 +13,9 @@ module {
   public type BroadcastIdsFullParams = (caller: Principal, state: State.MainState, params: BroadcastIdsParams);
 
   public func getBroadcastIds((caller, state, ()): BroadcastIdsFullParams): BroadcastIdsResponse {
-    let broadcastIds = Map.toArrayMap<Principal, State.Canister, Principal>(state.canisters, func(id, canister) = ?id);
+    let broadcastIds = Map.toArrayMap<Principal, State.Canister, Principal>(state.canisters, func(id, canister) {
+      return if (canister.canisterType == #Broadcast) ?id else null;
+    });
 
     let activeBroadcastIds = Map.toArrayMap<Principal, State.Canister, Principal>(state.canisters, func(id, canister) {
       return if (canister.active and canister.canisterType == #Broadcast) ?id else null;

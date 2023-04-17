@@ -1,4 +1,3 @@
-import Buffer "mo:base/Buffer";
 import Const "../../../common/const";
 import Debug "mo:base/Debug";
 import Error "mo:base/Error";
@@ -14,23 +13,21 @@ import { Types; State } "../../../migrations/types";
 module {
   public func transferPublicationStats(state: State.BroadcastState): async* () {
     let publishersIndex = actor(Principal.toText(state.publishersIndexId)):PublishersIndex.PublishersIndex;
+    var transferedSize = 0;
 
-    let transferStats = Map.toArrayMap<(Principal, Text), State.Stats, (Principal, Text, Types.SharedStats)>(
+    let transferStats = Map.toArrayMap<(Principal, Text), State.Stats, Types.StatsEntry>(
       state.publicationStats,
       func((publisherId, eventName), stats) = ?(publisherId, eventName, Stats.share(stats)),
     );
-
-    var transferedSize = 0;
 
     Map.clear(state.publicationStats);
 
     while (transferedSize < transferStats.size()) {
       let statsBatch = arraySlice(transferStats, ?transferedSize, ?(transferedSize + Const.STATS_BATCH_SIZE));
-
       var remainingStats = statsBatch;
 
       try {
-        remainingStats := await publishersIndex.transferPublicationStats(statsBatch)
+        remainingStats := await publishersIndex.mergePublicationStats(statsBatch);
       } catch (err) {
         Debug.print(Error.message(err));
       };
@@ -47,23 +44,21 @@ module {
 
   public func transferSubscriptionStats(state: State.BroadcastState): async* () {
     let subscribersIndex = actor(Principal.toText(state.subscribersIndexId)):SubscribersIndex.SubscribersIndex;
+    var transferedSize = 0;
 
-    let transferStats = Map.toArrayMap<(Principal, Text), State.Stats, (Principal, Text, Types.SharedStats)>(
+    let transferStats = Map.toArrayMap<(Principal, Text), State.Stats, Types.StatsEntry>(
       state.subscriptionStats,
       func((subscriberId, eventName), stats) = ?(subscriberId, eventName, Stats.share(stats)),
     );
-
-    var transferedSize = 0;
 
     Map.clear(state.subscriptionStats);
 
     while (transferedSize < transferStats.size()) {
       let statsBatch = arraySlice(transferStats, ?transferedSize, ?(transferedSize + Const.STATS_BATCH_SIZE));
-
       var remainingStats = statsBatch;
 
       try {
-        remainingStats := await subscribersIndex.transferSubscriptionStats(statsBatch)
+        remainingStats := await subscribersIndex.mergeSubscriptionStats(statsBatch);
       } catch (err) {
         Debug.print(Error.message(err));
       };

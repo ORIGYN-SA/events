@@ -1,10 +1,10 @@
+import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Principal "mo:base/Principal";
 import SubscribersStore "../../SubscribersStore/main";
 import Info "../../SubscribersStore/modules/info";
-import { take } "../../../utils/misc";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -15,7 +15,7 @@ module {
   public type SubscriberInfoFullParams = (caller: Principal, state: State.SubscribersIndexState, params: SubscriberInfoParams);
 
   public func getSubscriberInfo((caller, state, (options)): SubscriberInfoFullParams): async* SubscriberInfoResponse {
-    let subscriberStoreId = take(Map.get(state.subscribersLocation, phash, caller), Errors.SUBSCRIBER_NOT_FOUND);
+    let ?subscriberStoreId = Map.get(state.subscribersLocation, phash, caller) else Debug.trap(Errors.SUBSCRIBER_NOT_FOUND);
 
     let subscribersStore = actor(Principal.toText(subscriberStoreId)):SubscribersStore.SubscribersStore;
 
@@ -31,7 +31,7 @@ module {
   public type SubscriptionInfoFullParams = (caller: Principal, state: State.SubscribersIndexState, params: SubscriptionInfoParams);
 
   public func getSubscriptionInfo((caller, state, (eventName)): SubscriptionInfoFullParams): async* SubscriptionInfoResponse {
-    let subscriberStoreId = take(Map.get(state.subscribersLocation, phash, caller), Errors.SUBSCRIBER_NOT_FOUND);
+    let ?subscriberStoreId = Map.get(state.subscribersLocation, phash, caller) else Debug.trap(Errors.SUBSCRIBER_NOT_FOUND);
 
     let subscribersStore = actor(Principal.toText(subscriberStoreId)):SubscribersStore.SubscribersStore;
 
@@ -47,7 +47,7 @@ module {
   public type SubscriptionStatsFullParams = (caller: Principal, state: State.SubscribersIndexState, params: SubscriptionStatsParams);
 
   public func getSubscriptionStats((caller, state, (options)): SubscriptionStatsFullParams): async* SubscriptionStatsResponse {
-    let subscriberStoreId = take(Map.get(state.subscribersLocation, phash, caller), Errors.SUBSCRIBER_NOT_FOUND);
+    let ?subscriberStoreId = Map.get(state.subscribersLocation, phash, caller) else Debug.trap(Errors.SUBSCRIBER_NOT_FOUND);
 
     let subscribersStore = actor(Principal.toText(subscriberStoreId)):SubscribersStore.SubscribersStore;
 

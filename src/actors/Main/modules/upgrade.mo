@@ -9,7 +9,7 @@ import PublishersStore "../../PublishersStore/main";
 import Set "mo:map/Set";
 import SubscribersIndex "../../SubscribersIndex/main";
 import SubscribersStore "../../SubscribersStore/main";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {

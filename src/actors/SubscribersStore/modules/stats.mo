@@ -1,24 +1,25 @@
-import Buffer "mo:base/Buffer";
 import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Stats "../../../common/stats";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
-  public type ConsumeStatsResponse = ();
+  public type StatsBatchItem = (publisherId: Principal, eventName: Text, stats: Types.SharedStats);
 
-  public type ConsumeStatsParams = (statsBatch: [(Principal, Text, Types.SharedStats)]);
+  public type MergeStatsResponse = ();
 
-  public type ConsumeStatsFullParams = (caller: Principal, state: State.SubscribersStoreState, params: ConsumeStatsParams);
+  public type MergeStatsParams = (statsBatch: [StatsBatchItem]);
 
-  public func consumeSubscriptionStats((caller, state, (statsBatch)): ConsumeStatsFullParams): ConsumeStatsResponse {
+  public type MergeStatsFullParams = (caller: Principal, state: State.SubscribersStoreState, params: MergeStatsParams);
+
+  public func mergeSubscriptionStats((caller, state, (statsBatch)): MergeStatsFullParams): MergeStatsResponse {
     if (caller != state.subscribersIndexId) Debug.trap(Errors.PERMISSION_DENIED);
 
-    for ((subscriberId, eventName, stats) in statsBatch.vals()) ignore do ?{
-      let subscriptionGroup = Map.get(state.subscriptions, thash, eventName)!;
-      let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
+    for ((subscriberId, eventName, stats) in statsBatch.vals()) label iteration {
+      let ?subscriptionGroup = Map.get(state.subscriptions, thash, eventName) else break iteration;
+      let ?subscription = Map.get(subscriptionGroup, phash, subscriberId) else break iteration;
 
       Stats.merge(subscription.stats, stats);
     };

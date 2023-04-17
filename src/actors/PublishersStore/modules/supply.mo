@@ -2,8 +2,7 @@ import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Info "./info";
 import Set "mo:map/Set";
-import { take } "../../../utils/misc";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -19,12 +18,18 @@ module {
   public func supplyPublicationData((caller, state, (publisherId, eventName)): PublicationDataFullParams): PublicationDataResponse {
     if (not Set.has(state.broadcastIds, phash, caller)) Debug.trap(Errors.PERMISSION_DENIED);
 
-    let publisher = Info.getPublisherInfo(state.publishersIndexId, state, (publisherId, null));
-    let publication = Info.getPublicationInfo(state.publishersIndexId, state, (publisherId, eventName, ?{ includeWhitelist = ?true }));
-
-    return {
-      publisher = take(publisher, Errors.PUBLISHER_NOT_FOUND);
-      publication = take(publication, Errors.PUBLICATION_NOT_FOUND);
+    let ?publisher = (
+      Info.getPublisherInfo(state.publishersIndexId, state, (publisherId, null))
+    ) else {
+      Debug.trap(Errors.PUBLISHER_NOT_FOUND);
     };
+
+    let ?publication = (
+      Info.getPublicationInfo(state.publishersIndexId, state, (publisherId, eventName, ?{ includeSubscriberWhitelist = ?true }))
+    ) else {
+      Debug.trap(Errors.PUBLICATION_NOT_FOUND);
+    };
+
+    return { publisher; publication };
   };
 };

@@ -1,10 +1,11 @@
+import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Principal "mo:base/Principal";
 import PublishersStore "../../PublishersStore/main";
 import Register "../../PublishersStore/modules/register";
-import { take; takeChain } "../../../utils/misc";
-import { nhash; thash; phash } "mo:map/Map";
+import { takeChain } "../../../utils/misc";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -63,7 +64,7 @@ module {
   public type RemovePublicationFullParams = (caller: Principal, state: State.PublishersIndexState, params: RemovePublicationParams);
 
   public func removePublication((caller, state, (eventName, options)): RemovePublicationFullParams): async* RemovePublicationResponse {
-    let publisherStoreId = take(Map.get(state.publishersLocation, phash, caller), Errors.PUBLISHER_NOT_FOUND);
+    let ?publisherStoreId = Map.get(state.publishersLocation, phash, caller) else Debug.trap(Errors.PUBLISHER_NOT_FOUND);
 
     let publishersStore = actor(Principal.toText(publisherStoreId)):PublishersStore.PublishersStore;
 

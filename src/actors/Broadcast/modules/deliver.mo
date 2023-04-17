@@ -6,12 +6,13 @@ import Map "mo:map/Map";
 import Principal "mo:base/Principal";
 import PublishersIndex "../../PublishersIndex/main";
 import PublishersStore "../../PublishersStore/main";
+import Queue "./queue";
 import Set "mo:map/Set";
 import Stats "../../../common/stats";
 import SubscribersStore "../../SubscribersStore/main";
 import { setTimer; time } "mo:prim";
-import { nhash; thash; phash } "mo:map/Map";
-import { unwrap; nat8ToNat64 } "../../../utils/misc";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
+import { nat8ToNat64 } "../../../utils/misc";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -24,13 +25,13 @@ module {
 
     let { publication } = await publishersStore.supplyPublicationData(event.publisherId, event.eventName);
 
-    let eventInfo = unwrap(Info.getEventInfo(state.mainId, state, (event.publisherId, event.id)));
+    let ?eventInfo = Info.getEventInfo(state.mainId, state, (event.publisherId, event.id));
 
     let subscriberIds = if (event.numberOfAttempts > 0) Set.toArray(event.subscribers) else [];
 
     let subscribersStoreIter = switch (event.lastSubscribersStoreId) {
-      case (?lastSubscribersStoreId) Set.keysFrom(state.subscribersStoreIds, phash, lastSubscribersStoreId).movePrev();
-      case (_) Set.keys(state.subscribersStoreIds);
+      case (null) Set.keys(state.subscribersStoreIds);
+      case (_) Set.keysFrom(state.subscribersStoreIds, phash, event.lastSubscribersStoreId).movePrev();
     };
 
     for (subscribersStoreId in subscribersStoreIter) {
@@ -42,7 +43,9 @@ module {
       label subscribersStoreLoop loop {
         let { subscribersBatch; finalBatch } = await subscribersStore.supplySubscribersBatch(event.eventName, event.payload, {
           from = event.lastSubscriberId;
-          whitelist = publication.whitelist;
+          eventType = event.eventType;
+          publisherId = event.publisherId;
+          subscriberWhitelist = publication.subscriberWhitelist;
           subscriberIds = subscriberIds;
           randomSeed = state.randomSeed;
         });
@@ -93,18 +96,17 @@ module {
     event.lastSubscribersStoreId := null;
     event.numberOfAttempts += 1;
 
-    Set.delete(state.broadcastQueue, nhash, event.id);
+    Queue.remove(state, event);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public func broadcast(state: State.BroadcastState): async () {
     try await async {
-      while (Set.size(state.broadcastQueue) > 0) ignore do ?{
-        let eventId = Set.peekFront(state.broadcastQueue)!;
-        let event = Map.get(state.events, nhash, eventId)!;
+      label broadcastLoop loop {
+        let ?event = Queue.next(state) else break broadcastLoop;
 
-        await* broadcastEvent(state, Map.get(state.events, nhash, eventId)!);
+        await* broadcastEvent(state, event);
       };
 
       state.broadcastQueued := false;
@@ -121,16 +123,16 @@ module {
 
   public func resendCheck(state: State.BroadcastState): async* () {
     for (event in Map.vals(state.events)) {
-      if (Set.size(event.subscribers) > 0 and event.nextBroadcastTime <= time()) {
+      if (not Set.empty(event.subscribers) and event.nextBroadcastTime <= time()) {
         if (event.numberOfAttempts < Const.RESEND_ATTEMPTS_LIMIT) {
-          Set.add(state.broadcastQueue, nhash, event.id);
+          Queue.add(state, event, #Secondary);
         } else {
           Set.clear(event.subscribers);
         };
       };
     };
 
-    if (not state.broadcastQueued and Set.size(state.broadcastQueue) > 0) {
+    if (not state.broadcastQueued and not Queue.empty(state)) {
       ignore broadcast(state);
 
       state.broadcastQueued := true;

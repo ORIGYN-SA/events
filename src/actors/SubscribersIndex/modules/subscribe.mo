@@ -1,10 +1,11 @@
+import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Principal "mo:base/Principal";
 import Subscribe "../../SubscribersStore/modules/subscribe";
 import SubscribersStore "../../SubscribersStore/main";
-import { take; takeChain } "../../../utils/misc";
-import { nhash; thash; phash } "mo:map/Map";
+import { takeChain } "../../../utils/misc";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -63,7 +64,7 @@ module {
   public type UnsubscribeFullParams = (caller: Principal, state: State.SubscribersIndexState, params: UnsubscribeParams);
 
   public func unsubscribe((caller, state, (eventName, options)): UnsubscribeFullParams): async* UnsubscribeResponse {
-    let subscriberStoreId = take(Map.get(state.subscribersLocation, phash, caller), Errors.SUBSCRIBER_NOT_FOUND);
+    let ?subscriberStoreId = Map.get(state.subscribersLocation, phash, caller) else Debug.trap(Errors.SUBSCRIBER_NOT_FOUND);
 
     let subscribersStore = actor(Principal.toText(subscriberStoreId)):SubscribersStore.SubscribersStore;
 

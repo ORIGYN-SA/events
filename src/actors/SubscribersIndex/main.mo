@@ -6,7 +6,7 @@ import Location "./modules/location";
 import MigrationTypes "../../migrations/types";
 import Migrations "../../migrations";
 import Subscribe "./modules/subscribe";
-import Transfer "./modules/transfer";
+import Stats "./modules/stats";
 import { defaultArgs } "../../migrations";
 
 shared (deployer) actor class SubscribersIndex() {
@@ -66,7 +66,7 @@ shared (deployer) actor class SubscribersIndex() {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func transferSubscriptionStats(params: Transfer.TransferStatsParams): async Transfer.TransferStatsResponse {
-    return await* Transfer.transferSubscriptionStats(context.caller, state, params);
+  public shared (context) func mergeSubscriptionStats(params: Stats.MergeStatsParams): async Stats.MergeStatsResponse {
+    return await* Stats.mergeSubscriptionStats(context.caller, state, params);
   };
 };

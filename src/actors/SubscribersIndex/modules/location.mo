@@ -2,8 +2,7 @@ import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Set "mo:map/Set";
-import { take } "../../../utils/misc";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -16,6 +15,8 @@ module {
   public func getSubscriberLocation((caller, state, (subscriberId)): GetLocationFullParams): GetLocationResponse {
     if (not Set.has(state.broadcastIds, phash, caller)) Debug.trap(Errors.PERMISSION_DENIED);
 
-    return take(Map.get(state.subscribersLocation, phash, subscriberId), Errors.SUBSCRIBER_NOT_FOUND);
+    let ?subscriberStoreId = Map.get(state.subscribersLocation, phash, caller) else Debug.trap(Errors.SUBSCRIBER_NOT_FOUND);
+
+    return subscriberStoreId;
   };
 };

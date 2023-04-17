@@ -61,8 +61,8 @@ shared (deployer) actor class SubscribersStore(
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public shared (context) func consumeSubscriptionStats(params: Stats.ConsumeStatsParams): async Stats.ConsumeStatsResponse {
-    return Stats.consumeSubscriptionStats(context.caller, state, params);
+  public shared (context) func mergeSubscriptionStats(params: Stats.MergeStatsParams): async Stats.MergeStatsResponse {
+    return Stats.mergeSubscriptionStats(context.caller, state, params);
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

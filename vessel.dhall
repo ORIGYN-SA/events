@@ -3,10 +3,10 @@
     "base",
     "candy_0_1_9",
     "candy",
-    "map_8_0_0_rc_2",
+    "map_8_1_0",
     "map",
-    "candy_utils_0_2_1",
+    "candy_utils_0_2_2",
     "candy_utils",
   ],
-  compiler = Some "0.8.2",
+  compiler = Some "0.8.5",
 }

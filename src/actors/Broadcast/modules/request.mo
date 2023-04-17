@@ -1,8 +1,9 @@
 import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
+import Queue "./queue";
 import Set "mo:map/Set";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -33,7 +34,7 @@ module {
           (to == null or event.createdAt > to!)
         ) {
           Set.add(event.sendRequests, phash, subscriberId);
-          Set.add(state.broadcastQueue, nhash, event.id);
+          Queue.add(state, event, #Secondary);
         };
       };
     };

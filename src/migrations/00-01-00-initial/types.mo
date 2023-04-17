@@ -17,6 +17,11 @@ module {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  public type EventPriority = {
+    #Primary;
+    #Secondary;
+  };
+
   public type CanisterMetrics = {
     heapSize: Nat;
     balance: Nat;
@@ -39,6 +44,12 @@ module {
     numberOfConfirmations: Nat64;
   };
 
+  public type StatsEntry = (
+    principalId: Principal,
+    eventName: Text,
+    stats: SharedStats,
+  );
+
   public type SharedPublisher = {
     id: Principal;
     createdAt: Nat64;
@@ -52,7 +63,7 @@ module {
     createdAt: Nat64;
     stats: SharedStats;
     active: Bool;
-    whitelist: [Principal];
+    subscriberWhitelist: [Principal];
   };
 
   public type SharedSubscriber = {
@@ -76,7 +87,7 @@ module {
   };
 
   public type SharedEvent = {
-    id: Nat;
+    id: Nat64;
     eventName: Text;
     publisherId: Principal;
     payload: Candy.CandyValue;

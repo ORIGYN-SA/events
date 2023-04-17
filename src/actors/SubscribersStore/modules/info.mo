@@ -4,7 +4,7 @@ import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Set "mo:map/Set";
 import Stats "../../../common/stats";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -22,32 +22,32 @@ module {
   public func getSubscriberInfo((caller, state, (subscriberId, options)): SubscriberInfoFullParams): SubscriberInfoResponse {
     if (caller != state.subscribersIndexId) Debug.trap(Errors.PERMISSION_DENIED);
 
-    var result = null:?Types.SharedSubscriber;
+    let ?subscriber = Map.get(state.subscribers, phash, subscriberId) else return null;
+
+    var listeners = []:[Principal];
+    var confirmedListeners = []:[Principal];
+    var subscriptions = []:[Text];
 
     ignore do ?{
-      let subscriber = Map.get(state.subscribers, phash, subscriberId)!;
-
-      var listeners = []:[Principal];
-      var confirmedListeners = []:[Principal];
-      var subscriptions = []:[Text];
-
-      ignore do ?{ if (options!.includeListeners!) listeners := Set.toArray(subscriber.listeners) };
-
-      ignore do ?{ if (options!.includeListeners!) confirmedListeners := subscriber.confirmedListeners };
-
-      ignore do ?{ if (options!.includeSubscriptions!) subscriptions := Set.toArray(subscriber.subscriptions) };
-
-      result := ?{
-        id = subscriber.id;
-        createdAt = subscriber.createdAt;
-        activeSubscriptions = subscriber.activeSubscriptions;
-        listeners = listeners;
-        confirmedListeners = confirmedListeners;
-        subscriptions = subscriptions;
-      };
+      if (options!.includeListeners!) listeners := Set.toArray(subscriber.listeners);
     };
 
-    return result;
+    ignore do ?{
+      if (options!.includeListeners!) confirmedListeners := subscriber.confirmedListeners;
+    };
+
+    ignore do ?{
+      if (options!.includeSubscriptions!) subscriptions := Set.toArray(subscriber.subscriptions);
+    };
+
+    return ?{
+      id = subscriber.id;
+      createdAt = subscriber.createdAt;
+      activeSubscriptions = subscriber.activeSubscriptions;
+      listeners = listeners;
+      confirmedListeners = confirmedListeners;
+      subscriptions = subscriptions;
+    };
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -61,25 +61,19 @@ module {
   public func getSubscriptionInfo((caller, state, (subscriberId, eventName)): SubscriptionInfoFullParams): SubscriptionInfoResponse {
     if (caller != state.subscribersIndexId) Debug.trap(Errors.PERMISSION_DENIED);
 
-    var result = null:?Types.SharedSubscription;
+    let ?subscriptionGroup = Map.get(state.subscriptions, thash, eventName) else return null;
+    let ?subscription = Map.get(subscriptionGroup, phash, subscriberId) else return null;
 
-    ignore do ?{
-      let subscriptionGroup = Map.get(state.subscriptions, thash, eventName)!;
-      let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
-
-      result := ?{
-        eventName = subscription.eventName;
-        subscriberId = subscription.subscriberId;
-        createdAt = subscription.createdAt;
-        stats = Stats.share(subscription.stats);
-        rate = subscription.rate;
-        active = subscription.active;
-        stopped = subscription.stopped;
-        filter = subscription.filter;
-      };
+    return ?{
+      eventName = subscription.eventName;
+      subscriberId = subscription.subscriberId;
+      createdAt = subscription.createdAt;
+      stats = Stats.share(subscription.stats);
+      rate = subscription.rate;
+      active = subscription.active;
+      stopped = subscription.stopped;
+      filter = subscription.filter;
     };
-
-    return result;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -98,31 +92,31 @@ module {
   public func getSubscriptionStats((caller, state, (subscriberId, options)): SubscriptionStatsFullParams): SubscriptionStatsResponse {
     if (caller != state.subscribersIndexId) Debug.trap(Errors.PERMISSION_DENIED);
 
+    let ?subscriber = Map.get(state.subscribers, phash, subscriberId) else return Stats.empty;
+
+    var eventNamesIter = Set.keys(subscriber.subscriptions):Set.IterNext<Text>;
+
     let stats = Stats.build();
 
     ignore do ?{
-      let subscriber = Map.get(state.subscribers, phash, subscriberId)!;
+      if (options!.eventNames!.size() > Const.SUBSCRIPTIONS_LIMIT) Debug.trap(Errors.PUBLICATIONS_OPTION_LENGTH);
 
-      var eventNamesIter = Set.keys(subscriber.subscriptions):Set.IterNext<Text>;
+      eventNamesIter := options!.eventNames!.vals();
+    };
 
-      ignore do ?{
-        if (options!.eventNames!.size() > Const.PUBLICATIONS_LIMIT) Debug.trap(Errors.PUBLICATIONS_LENGTH);
+    for (eventName in eventNamesIter) label iteration {
+      let ?subscriptionGroup = Map.get(state.subscriptions, thash, eventName) else break iteration;
+      let ?subscription = Map.get(subscriptionGroup, phash, subscriberId) else break iteration;
 
-        eventNamesIter := options!.eventNames!.vals();
+      ignore do ? {
+        if (subscription.active != options!.active!) break iteration;
       };
 
-      for (eventName in eventNamesIter) label iteration ignore do ?{
-        let subscriptionGroup = Map.get(state.subscriptions, thash, eventName)!;
-        let subscription = Map.get(subscriptionGroup, phash, subscriberId)!;
-
-        ignore do ? { if (subscription.active != options!.active!) break iteration };
-
-        stats.numberOfEvents += subscription.stats.numberOfEvents;
-        stats.numberOfNotifications += subscription.stats.numberOfNotifications;
-        stats.numberOfResendNotifications += subscription.stats.numberOfResendNotifications;
-        stats.numberOfRequestedNotifications += subscription.stats.numberOfRequestedNotifications;
-        stats.numberOfConfirmations += subscription.stats.numberOfConfirmations;
-      };
+      stats.numberOfEvents += subscription.stats.numberOfEvents;
+      stats.numberOfNotifications += subscription.stats.numberOfNotifications;
+      stats.numberOfResendNotifications += subscription.stats.numberOfResendNotifications;
+      stats.numberOfRequestedNotifications += subscription.stats.numberOfRequestedNotifications;
+      stats.numberOfConfirmations += subscription.stats.numberOfConfirmations;
     };
 
     return Stats.share(stats);

@@ -1,10 +1,10 @@
+import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";
 import Principal "mo:base/Principal";
 import PublishersStore "../../PublishersStore/main";
 import Info "../../PublishersStore/modules/info";
-import { take } "../../../utils/misc";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -15,7 +15,7 @@ module {
   public type PublisherInfoFullParams = (caller: Principal, state: State.PublishersIndexState, params: PublisherInfoParams);
 
   public func getPublisherInfo((caller, state, (options)): PublisherInfoFullParams): async* PublisherInfoResponse {
-    let publisherStoreId = take(Map.get(state.publishersLocation, phash, caller), Errors.PUBLISHER_NOT_FOUND);
+    let ?publisherStoreId = Map.get(state.publishersLocation, phash, caller) else Debug.trap(Errors.PUBLISHER_NOT_FOUND);
 
     let publishersStore = actor(Principal.toText(publisherStoreId)):PublishersStore.PublishersStore;
 
@@ -31,7 +31,7 @@ module {
   public type PublicationInfoFullParams = (caller: Principal, state: State.PublishersIndexState, params: PublicationInfoParams);
 
   public func getPublicationInfo((caller, state, (eventName, options)): PublicationInfoFullParams): async* PublicationInfoResponse {
-    let publisherStoreId = take(Map.get(state.publishersLocation, phash, caller), Errors.PUBLISHER_NOT_FOUND);
+    let ?publisherStoreId = Map.get(state.publishersLocation, phash, caller) else Debug.trap(Errors.PUBLISHER_NOT_FOUND);
 
     let publishersStore = actor(Principal.toText(publisherStoreId)):PublishersStore.PublishersStore;
 
@@ -47,7 +47,7 @@ module {
   public type PublicationStatsFullParams = (caller: Principal, state: State.PublishersIndexState, params: PublicationStatsParams);
 
   public func getPublicationStats((caller, state, (options)): PublicationStatsFullParams): async* PublicationStatsResponse {
-    let publisherStoreId = take(Map.get(state.publishersLocation, phash, caller), Errors.PUBLISHER_NOT_FOUND);
+    let ?publisherStoreId = Map.get(state.publishersLocation, phash, caller) else Debug.trap(Errors.PUBLISHER_NOT_FOUND);
 
     let publishersStore = actor(Principal.toText(publisherStoreId)):PublishersStore.PublishersStore;
 

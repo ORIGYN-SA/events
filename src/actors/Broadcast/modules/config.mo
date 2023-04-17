@@ -3,7 +3,7 @@ import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Prim "mo:prim";
 import Set "mo:map/Set";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -38,30 +38,21 @@ module {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public type ActiveStatusResponse = ();
-
-  public type ActiveStatusParams = (active: Bool, broadcastVersion: Nat64);
-
-  public type ActiveStatusFullParams = (caller: Principal, state: State.BroadcastState, params: ActiveStatusParams);
-
-  public func setActiveStatus((caller, state, (active, broadcastVersion)): ActiveStatusFullParams): ActiveStatusResponse {
-    if (caller != state.mainId) Debug.trap(Errors.PERMISSION_DENIED);
-
-    state.active := active;
-    state.broadcastVersion := broadcastVersion;
+  public type Status = {
+    active: Bool;
+    broadcastVersion: Nat64;
   };
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  public type StatusResponse = ();
 
-  public type BroadcastVersionResponse = ();
+  public type StatusParams = (status: Status);
 
-  public type BroadcastVersionParams = (broadcastVersion: Nat64);
+  public type StatusFullParams = (caller: Principal, state: State.BroadcastState, params: StatusParams);
 
-  public type BroadcastVersionFullParams = (caller: Principal, state: State.BroadcastState, params: BroadcastVersionParams);
-
-  public func setBroadcastVersion((caller, state, (broadcastVersion)): BroadcastVersionFullParams): BroadcastVersionResponse {
+  public func setStatus((caller, state, (status)): StatusFullParams): StatusResponse {
     if (caller != state.mainId) Debug.trap(Errors.PERMISSION_DENIED);
 
-    state.broadcastVersion := broadcastVersion;
+    state.active := status.active;
+    state.broadcastVersion := status.broadcastVersion;
   };
 };

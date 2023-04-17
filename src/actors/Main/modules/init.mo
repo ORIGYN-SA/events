@@ -10,7 +10,7 @@ import PublishersIndex "../../PublishersIndex/main";
 import PublishersStore "../../PublishersStore/main";
 import SubscribersIndex "../../SubscribersIndex/main";
 import SubscribersStore "../../SubscribersStore/main";
-import { nhash; thash; phash } "mo:map/Map";
+import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -115,7 +115,7 @@ module {
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    let broadcastIds = Map.toArrayMap<Principal, State.Canister, Principal>(state.canisters, func(id, canister) = ?id);
+    let { broadcastIds } = Config.getBroadcastIds(state.mainId, state, ());
 
     await publishersIndex.setPublishersStoreId(?publishersStoreId);
 
