@@ -1,4 +1,4 @@
-import Candy "mo:candy/types";
+import Candy "mo:candy2/types";
 import CurrentState "./state";
 
 module {
@@ -21,6 +21,11 @@ module {
     #Primary;
     #Secondary;
   };
+
+  public type TimeRange = (
+    startTime: Nat64,
+    endTime: Nat64,
+  );
 
   public type CanisterMetrics = {
     heapSize: Nat;
@@ -90,9 +95,14 @@ module {
     id: Nat64;
     eventName: Text;
     publisherId: Principal;
-    payload: Candy.CandyValue;
+    payload: Candy.CandyShared;
     createdAt: Nat64;
     nextBroadcastTime: Nat64;
     numberOfAttempts: Nat8;
   };
+
+  public type EventEntry = (
+    eventName: Text,
+    payload: Candy.CandyShared,
+  );
 };

@@ -1,3 +1,4 @@
+import Candy "mo:candy2/types";
 import Debug "mo:base/Debug";
 import Errors "../../../common/errors";
 import Map "mo:map/Map";

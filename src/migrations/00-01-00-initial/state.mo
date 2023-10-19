@@ -1,5 +1,5 @@
-import Candy "mo:candy_0_1_9/types";
-import CandyUtils "mo:candy_utils_0_2_2/CandyUtils";
+import Candy "mo:candy_0_2_0/types";
+import CandyUtils "mo:candy_utils_0_6_0/CandyUtils";
 import Map "mo:map_8_1_0/Map";
 import Set "mo:map_8_1_0/Set";
 import Principal "mo:base/Principal";
@@ -89,7 +89,7 @@ module {
     eventName: Text;
     publisherId: Principal;
     eventType: EventType;
-    payload: Candy.CandyValue;
+    payload: Candy.CandyShared;
     createdAt: Nat64;
     var nextBroadcastTime: Nat64;
     var numberOfAttempts: Nat8;
@@ -114,7 +114,7 @@ module {
     var subscribersStoreIds: Set.Set<Principal>;
     var active: Bool;
     var eventId: Nat64;
-    var maxQueueSize: Nat32;
+    var queueOverflowTime: Nat64;
     var broadcastVersion: Nat64;
     var broadcastQueued: Bool;
     var randomSeed: Nat32;
@@ -125,9 +125,8 @@ module {
     primaryBroadcastGroups: Map.Map<Principal, Nat32>;
     secondaryBroadcastGroups: Map.Map<Principal, Nat32>;
     publicationStats: Map.Map<(Principal, Text), Stats>;
-    publicationTransferStats: Map.Map<(Principal, Text), Stats>;
     subscriptionStats: Map.Map<(Principal, Text), Stats>;
-    subscriptionTransferStats: Map.Map<(Principal, Text), Stats>;
+    queueOverflows: Map.Map<Nat64, Nat64>;
   };
 
   public type MainState = {
@@ -138,6 +137,7 @@ module {
     var broadcastSynced: Bool;
     var publishersStoreSynced: Bool;
     var subscribersStoreSynced: Bool;
+    var queueOverflowCheckTime: Nat64;
     var broadcastVersion: Nat64;
     var status: CanisterStatus;
     admins: Set.Set<Principal>;

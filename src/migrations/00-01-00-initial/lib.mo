@@ -26,8 +26,7 @@ module {
           var subscribersStoreIds = Set.fromIter(subscribersStoreIds.vals(), phash);
           var active = true;
           var eventId = 0;
-          var broadcastActive = false;
-          var maxQueueSize = 0;
+          var queueOverflowTime = 0;
           var broadcastVersion = broadcastVersion;
           var broadcastQueued = false;
           var randomSeed = 0;
@@ -38,9 +37,8 @@ module {
           primaryBroadcastGroups = Map.new(phash);
           secondaryBroadcastGroups = Map.new(phash);
           publicationStats = Map.new(pthash);
-          publicationTransferStats = Map.new(pthash);
           subscriptionStats = Map.new(pthash);
-          subscriptionTransferStats = Map.new(pthash);
+          queueOverflows = Map.new(n64hash);
         })));
       };
 
@@ -58,6 +56,7 @@ module {
           var broadcastSynced = true;
           var publishersStoreSynced = true;
           var subscribersStoreSynced = true;
+          var queueOverflowCheckTime = 0;
           var broadcastVersion = 1;
           var status = #Running;
           admins = Set.fromIter([deployer].vals(), phash);

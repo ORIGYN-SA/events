@@ -66,6 +66,10 @@ shared (deployer) actor class Broadcast(
     return await* Publish.publish(context.caller, state, params);
   };
 
+  public shared (context) func publishBatch(params: Publish.PublishBatchParams): async Publish.PublishBatchResponse {
+    return await* Publish.publishBatch(context.caller, state, params);
+  };
+
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public shared (context) func requestEvents(params: Request.RequestEventsParams): async Request.RequestEventsResponse {

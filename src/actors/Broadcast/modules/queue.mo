@@ -1,5 +1,7 @@
+import Const "../../../common/const";
 import Map "mo:map/Map";
 import Set "mo:map/Set";
+import { time } "mo:prim";
 import { n32hash; n64hash; thash; phash } "mo:map/Map";
 import { Types; State } "../../../migrations/types";
 
@@ -21,6 +23,12 @@ module {
 
     Map.set(state.queuedEvents, n64hash, event.id, groupId);
     Set.add(group, n64hash, event.id);
+
+    if (state.queueOverflowTime == 0 and Map.size(state.queuedEvents) > Const.QUEUE_OVERFLOW_THRESHOLD) {
+      Map.set(state.queueOverflows, n64hash, time(), 0:Nat64);
+
+      state.queueOverflowTime := time();
+    };
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -59,6 +67,12 @@ module {
         };
       };
     };
+
+    if (state.queueOverflowTime != 0 and Map.size(state.queuedEvents) <= Const.QUEUE_OVERFLOW_THRESHOLD) {
+      Map.set(state.queueOverflows, n64hash, state.queueOverflowTime, time());
+
+      state.queueOverflowTime := 0;
+    };
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,5 +91,13 @@ module {
 
   public func empty(state: State.BroadcastState): Bool {
     return Map.empty(state.primaryBroadcastQueue) and Map.empty(state.secondaryBroadcastQueue);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public func clearOwerflows(state: State.BroadcastState) {
+    for ((startTime, endTime) in Map.entries(state.queueOverflows)) {
+      if (endTime < time() - Const.QUEUE_OVERFLOWS_CLEAR_INTERVAL) Map.delete(state.queueOverflows, n64hash, startTime);
+    };
   };
 };

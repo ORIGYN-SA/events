@@ -15,7 +15,7 @@ import { Types; State } "../../../migrations/types";
 
 module {
   public func checkBroadcastSpace(state: State.MainState, canister: State.Canister): async* () {
-    if (canister.heapSize > Const.CANISTER_DEACTIVATE_THRESHOLD) {
+    if (canister.active and canister.heapSize > Const.CANISTER_DEACTIVATE_THRESHOLD) {
       let spareBroadcast = Map.find<Principal, State.Canister>(state.canisters, func(key, item) {
         return not item.active and item.canisterType == #Broadcast and item.heapSize < Const.CANISTER_REACTIVATE_THRESHOLD;
       });
@@ -62,7 +62,7 @@ module {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public func checkPublishersStoreSpace(state: State.MainState, canister: State.Canister): async* () {
-    if (canister.heapSize > Const.CANISTER_DEACTIVATE_THRESHOLD) {
+    if (canister.active and canister.heapSize > Const.CANISTER_DEACTIVATE_THRESHOLD) {
       let publishersIndex = actor(Principal.toText(state.publishersIndexId)):PublishersIndex.PublishersIndex;
 
       let sparePublishersStore = Map.find<Principal, State.Canister>(state.canisters, func(key, item) {
@@ -108,7 +108,7 @@ module {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public func checkSubscribersStoreSpace(state: State.MainState, canister: State.Canister): async* () {
-    if (canister.heapSize > Const.CANISTER_DEACTIVATE_THRESHOLD) {
+    if (canister.active and canister.heapSize > Const.CANISTER_DEACTIVATE_THRESHOLD) {
       let subscribersIndex = actor(Principal.toText(state.subscribersIndexId)):SubscribersIndex.SubscribersIndex;
 
       let spareSubscribersStore = Map.find<Principal, State.Canister>(state.canisters, func(key, item) {
@@ -171,7 +171,7 @@ module {
     let subscribersStoreIds = Map.toArrayMap<Principal, State.Canister, Principal>(state.canisters, func(id, canister) = ?id);
 
     ignore do ?{
-      let (key, activeSubscribersStore) = Map.find<Principal, State.Canister>(state.canisters, func(key, item) = item.active)!;
+      let ?(key, activeSubscribersStore) = Map.find<Principal, State.Canister>(state.canisters, func(key, item) = item.active);
 
       await subscribersIndex.setSubscribersStoreId(?activeSubscribersStore.canisterId);
     };
@@ -225,11 +225,11 @@ module {
       await* checkCanisterCycles(state);
 
       for (canister in Map.vals(state.canisters)) try {
-        if (canister.active and canister.canisterType == #Broadcast) await* checkBroadcastSpace(state, canister);
+        if (canister.canisterType == #Broadcast) await* checkBroadcastSpace(state, canister);
 
-        if (canister.active and canister.canisterType == #PublishersStore) await* checkPublishersStoreSpace(state, canister);
+        if (canister.canisterType == #PublishersStore) await* checkPublishersStoreSpace(state, canister);
 
-        if (canister.active and canister.canisterType == #SubscribersStore) await* checkSubscribersStoreSpace(state, canister);
+        if (canister.canisterType == #SubscribersStore) await* checkSubscribersStoreSpace(state, canister);
       } catch (err) {
         Debug.print(Error.message(err));
       };

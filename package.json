@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "start": "dfx start",
+    "build": "DFX_MOC_PATH=$(vessel bin)/moc dfx build",
+    "deploy": "DFX_MOC_PATH=$(vessel bin)/moc dfx deploy",
+    "deploy-init": "DFX_MOC_PATH=$(vessel bin)/moc dfx deploy --with-cycles 1000000000000000",
+    "fabricate-cycles": "dfx ledger fabricate-cycles --canister $(dfx identity get-wallet) --cycles 1000000000000000",
+    "init": "npm run fabricate-cycles && npm run deploy-init"
+  }
+}

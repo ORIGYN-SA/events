@@ -1,5 +1,5 @@
 import Buffer "mo:base/Buffer";
-import Candy "mo:candy/types";
+import Candy "mo:candy2/types";
 import CandyUtils "mo:candy_utils/CandyUtils";
 import Const "../../../common/const";
 import Debug "mo:base/Debug";
@@ -9,6 +9,7 @@ import Set "mo:map/Set";
 import { nat32ToNat } "mo:prim";
 import { hashNat32; hashPrincipal } "mo:map/Map";
 import { n32hash; n64hash; thash; phash } "mo:map/Map";
+import { unwrap } "../../../utils/misc";
 import { Types; State } "../../../migrations/types";
 
 module {
@@ -28,7 +29,7 @@ module {
     finalBatch: Bool;
   };
 
-  public type SubscribersBatchParams = (eventName: Text, payload: Candy.CandyValue, options: SubscribersBatchOptions);
+  public type SubscribersBatchParams = (eventName: Text, payload: Candy.CandyShared, options: SubscribersBatchOptions);
 
   public type SubscribersBatchFullParams = (caller: Principal, state: State.SubscribersStoreState, params: SubscribersBatchParams);
 
@@ -46,6 +47,7 @@ module {
     };
 
     let subscribersBatch = Buffer.Buffer<SubscribersBatchItem>(0);
+    var payloadUnshared = null:?Candy.Candy;
     var rateSeed = hashNat32(hashPrincipal(caller) +% options.randomSeed +% 1);
     var listenersSeed = hashNat32(hashPrincipal(caller) +% options.randomSeed +% 2);
 
@@ -59,9 +61,13 @@ module {
 
       if (not subscription.active or subscription.stopped or hashNat32(rateSeed) % 100 > subscription.rate) break iteration;
 
-      if (subscription.filterPath != null and CandyUtils.get(payload, subscription.filterPath) == #Bool(false)) break iteration;
-
       if (options.eventType != #System and Set.contains(subscription.publisherWhitelist, phash, options.publisherId) == ?false) break iteration;
+
+      if (subscription.filterPath != null) {
+        payloadUnshared := switch (payloadUnshared) { case (null) ?Candy.unshare(payload); case (_) payloadUnshared };
+
+        switch (CandyUtils.get(unwrap(payloadUnshared), subscription.filterPath)) { case (#Bool(false)) break iteration; case (_) {} };
+      };
 
       subscribersBatch.add(subscriberId, subscriber.confirmedListeners[nat32ToNat(hashNat32(listenersSeed)) % listenersSize]);
 

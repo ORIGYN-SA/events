@@ -1,4 +1,5 @@
-import Candy "mo:candy/types";
+import Buffer "mo:base/Buffer";
+import Candy "mo:candy2/types";
 import Const "../../../common/const";
 import Debug "mo:base/Debug";
 import Deliver "./deliver";
@@ -17,7 +18,7 @@ module {
     broadcastVersion: Nat64;
   };
 
-  public type PublishParams = (eventName: Text, payload: Candy.CandyValue);
+  public type PublishParams = (eventName: Text, payload: Candy.CandyShared);
 
   public type PublishFullParams = (caller: Principal, state: State.BroadcastState, params: PublishParams);
 
@@ -56,5 +57,30 @@ module {
     state.eventId += 1;
 
     return { eventInfo; broadcastVersion = state.broadcastVersion };
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public type PublishBatchResponse = {
+    eventsInfo: [Types.SharedEvent];
+    broadcastVersion: Nat64;
+  };
+
+  public type PublishBatchParams = (events: [Types.EventEntry]);
+
+  public type PublishBatchFullParams = (caller: Principal, state: State.BroadcastState, params: PublishBatchParams);
+
+  public func publishBatch((caller, state, (events)): PublishBatchFullParams): async* PublishBatchResponse {
+    if (not state.active) Debug.trap(Errors.INACTIVE_CANISTER);
+
+    let eventsInfo = Buffer.Buffer<Types.SharedEvent>(events.size());
+
+    for ((eventName, payload) in events.vals()) {
+      let { eventInfo } = await* publish(caller, state, (eventName, payload));
+
+      eventsInfo.add(eventInfo);
+    };
+
+    return { eventsInfo = Buffer.toArray(eventsInfo); broadcastVersion = state.broadcastVersion };
   };
 };

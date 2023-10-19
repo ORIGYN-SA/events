@@ -32,6 +32,8 @@ module {
 
     let publishersIndexId = Principal.fromActor(publishersIndex);
 
+    state.publishersIndexId := publishersIndexId;
+
     Map.set(state.canisters, phash, publishersIndexId, {
       canisterId = publishersIndexId;
       canisterType = #PublishersIndex;
@@ -48,6 +50,8 @@ module {
     let subscribersIndex = await SubscribersIndex.SubscribersIndex();
 
     let subscribersIndexId = Principal.fromActor(subscribersIndex);
+
+    state.subscribersIndexId := subscribersIndexId;
 
     Map.set(state.canisters, phash, subscribersIndexId, {
       canisterId = subscribersIndexId;
